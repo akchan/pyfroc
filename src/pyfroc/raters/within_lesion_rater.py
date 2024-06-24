@@ -11,9 +11,7 @@ from pyfroc.raters import BaseRater
 from pyfroc.signals import Response, Lesion, T_TruePositive, T_FalsePositive
 
 
-class WithinLesionRater(BaseRater):
-    @classmethod
-    def evaluate_case_responses(cls, responses: list[Response], lesions: list[Lesion], check_players=False) -> tuple[T_TruePositive, T_FalsePositive]:
+    def evaluate_case_responses(self, responses: list[Response], lesions: list[Lesion], check_players=False) -> tuple[T_TruePositives, T_FalsePositives]:
         """Evaluate the case responses and lesions to determine the true positive and false positive results.
 
         This function takes a list of responses and lesions as input and performs the evaluation process to determine the true positive and false positive results. It performs the matching process using the hospital-resident algorithm. The matching result is returned as true positive and false positive signals.
@@ -26,8 +24,8 @@ class WithinLesionRater(BaseRater):
             tuple[T_TruePositive, T_FalsePositive]: A tuple containing the true positive and false positive results.
 
         """
-        responses_bidict, lesions_bidict = cls._build_bidict(responses, lesions)
-        cls._set_prefs_of_players(responses_bidict, lesions_bidict)
+        responses_bidict, lesions_bidict = self.build_bidict(responses, lesions)
+        self.set_prefs_of_players(responses_bidict, lesions_bidict)
 
         residents = list(responses_bidict.values())
         hospitals = list(lesions_bidict.values())
@@ -38,25 +36,26 @@ class WithinLesionRater(BaseRater):
                 _ = HospitalResident(residents, hospitals)
 
             # Call hospital_resident() function directly to avoid deep copy of the players objects
+            # in the HospitalResident.__init__() method.
             matching_result = MultipleMatching(hospital_resident(residents, hospitals, optimal="hospital"))
 
-            true_positive, false_positive = cls._mathcing_result2signals(matching_result, responses_bidict, lesions_bidict)
+            true_positive, false_positive = self.mathcing_result2signals(matching_result, responses_bidict, lesions_bidict)
         else:
             true_positive = []
             false_positive = list(responses_bidict.keys())
 
         return true_positive, false_positive
 
-    @classmethod
-    def _build_bidict(cls, responses: list[Response], lesions: list[Lesion]) -> tuple[bidict[Response, Player], bidict[Lesion, Hospital]]:
+    @staticmethod
+    def build_bidict(responses: list[Response], lesions: list[Lesion]) -> tuple[bidict[Response, Player], bidict[Lesion, Hospital]]:
         responses_bidict = bidict({resp: Player(f"response{i:04d}") for i, resp in enumerate(responses)})
 
         lesions_bidict = bidict({lesion: Hospital(f"lesion{i:04d}", capacity=1) for i, lesion in enumerate(lesions)})
 
         return responses_bidict, lesions_bidict
 
-    @classmethod
-    def _set_prefs_of_players(cls, responses_bidict: bidict[Response, Player], lesions_bidict: bidict[Lesion, Hospital]) -> None:
+    @staticmethod
+    def set_prefs_of_players(responses_bidict: bidict[Response, Player], lesions_bidict: bidict[Lesion, Hospital]) -> None:
         if len(responses_bidict) == 0:
             return
 
@@ -64,41 +63,41 @@ class WithinLesionRater(BaseRater):
         for lesion, hospital in lesions_bidict.items():
             hospital.capacity = 1
 
-            selected_responses = []
-            for response in responses_bidict.keys():
-                if response.is_true_positive(lesion):
-                    selected_responses.append(response)
+            responses = responses_bidict.keys()
+            sorted_responses = sorted(responses, key=lambda response: lesion.distance(response))
 
-            sorted_responses = sorted(selected_responses, key=lambda x: lesion.distance(x))
+            # Convert the responses to players and set the preferences
             pref = [responses_bidict[response] for response in sorted_responses]
-
             hospital.set_prefs(pref)
 
         # Set response preferences
         for response, player in responses_bidict.items():
-            selected_lesions = []
-            for lesion in lesions_bidict.keys():
-                if response.is_true_positive(lesion):
-                    selected_lesions.append(lesion)
+            lesions = lesions_bidict.keys()
 
-            sorted_lesions = sorted(selected_lesions, key=lambda x: response.distance(x))
+            sorted_lesions = sorted(lesions, key=lambda lesion: response.distance(lesion))
+
+            # Convert the responses to players and set the preferences
             pref = [lesions_bidict[lesion] for lesion in sorted_lesions]
-
             player.set_prefs(pref)
 
-    @classmethod
-    def _mathcing_result2signals(cls, matching_result: MultipleMatching,
-                                 responses_bidict: bidict[Response, Player],
-                                 lesions_bidict: bidict[Lesion, Hospital]) -> tuple[T_TruePositive, T_FalsePositive]:
-        true_positive: T_TruePositive = []
+    @staticmethod
+    def mathcing_result2signals(matching_result: MultipleMatching,
+                                responses_bidict: bidict[Response, Player],
+                                lesions_bidict: bidict[Lesion, Hospital]) -> tuple[T_TruePositives, T_FalsePositives]:
+        true_positives: T_TruePositives = []
 
         for hospital, residents in matching_result.items():
+            assert len(residents) in [0, 1], "Each hospital (lesion) should have at most one resident (response)."
+
             lesion = lesions_bidict.inverse[hospital]
 
+            # Use for loop to handle the both cases of 0 and 1 resident
             for resident in residents:
-                responses = responses_bidict.inverse[resident]
-                true_positive.append((responses, lesion))
+                response = responses_bidict.inverse[resident]
 
-        false_positive: T_FalsePositive = list(set(responses_bidict.keys()) - set(map(lambda x: x[0], true_positive)))
+                if response.is_true_positive(lesion):
+                    true_positives.append((response, lesion))
 
-        return true_positive, false_positive
+        false_positive: T_FalsePositives = list(set(responses_bidict.keys()) - set(map(lambda t: t[0], true_positives)))
+
+        return true_positives, false_positive
