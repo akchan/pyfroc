@@ -31,7 +31,7 @@ class BaseLoader(ABC):
     def __len__(self):
         return len(self.casekey_list)
 
-    def __getitem__(self, index) -> T_EvaluationInput:
+    def __getitem__(self, index: int) -> T_EvaluationInput:
         if index >= len(self):
             raise IndexError("Index out of range")
 
