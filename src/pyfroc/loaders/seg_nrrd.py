@@ -40,12 +40,13 @@ class SegNRRD:
 
 
 class SegNRRDLoader(BaseLoader):
-    def read_responses(self, case_dir_path: str) -> list[Response]:
+    @staticmethod
+    def read_responses(case_dir_path: str) -> list[Response]:
         series_responses = []
 
-        for segnrrd_path in self.list_segnrrd_path(case_dir_path):
-            segnrrd = self.read_segnrrd(segnrrd_path)
-            series_responses.extend(self.segnrrd2responses(segnrrd))
+        for segnrrd_path in SegNRRDLoader.list_segnrrd_path(case_dir_path):
+            segnrrd = SegNRRDLoader.read_segnrrd(segnrrd_path)
+            series_responses.extend(SegNRRDLoader.segnrrd2responses(segnrrd))
 
         return series_responses
 
