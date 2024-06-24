@@ -8,9 +8,10 @@ from matching.games import HospitalResident
 from matching.matchings import MultipleMatching
 
 from pyfroc.raters import BaseRater
-from pyfroc.signals import Response, Lesion, T_TruePositive, T_FalsePositive
+from pyfroc.signals import Response, Lesion, T_TruePositives, T_FalsePositives
 
 
+class NearestPairRater(BaseRater):
     def evaluate_case_responses(self, responses: list[Response], lesions: list[Lesion], check_players=False) -> tuple[T_TruePositives, T_FalsePositives]:
         """Evaluate the case responses and lesions to determine the true positive and false positive results.
 

@@ -7,8 +7,8 @@ from typing import TypeVar
 from pyfroc.coords import Coordinates
 
 T_Signal = TypeVar("T_Signal", "Lesion", "Response")
-T_TruePositive = list[tuple["Response", "Lesion"]]
-T_FalsePositive = list["Response"]
+T_TruePositives = list[tuple["Response", "Lesion"]]
+T_FalsePositives = list["Response"]
 
 
 @dataclass(frozen=True)

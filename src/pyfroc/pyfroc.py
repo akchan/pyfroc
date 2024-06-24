@@ -2,7 +2,7 @@
 # coding: UTF-8
 
 from pyfroc.loaders import BaseLoader, SegNRRDLoader
-from pyfroc.raters import WithinLesionRater
+from pyfroc.raters import NearestPairRater
 from pyfroc.writers import RJAFROCWriter
 
 
@@ -17,7 +17,7 @@ def evaluate(tgt_dir: str, loader_class_flag: str, rater_class_flag: str, out_pa
         raise ValueError(f"Unknown loader class flag: {loader_class_flag}")
 
     if rater_class_flag == "WithinLesionRater":
-        rater_class = WithinLesionRater
+        rater_class = NearestPairRater
     else:
         raise ValueError(f"Unknown rater class flag: {rater_class_flag}")
 
