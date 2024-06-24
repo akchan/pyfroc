@@ -46,14 +46,12 @@ class BaseLoader(ABC):
 
         return casekey, lesions, responses
 
-    @staticmethod
     @abstractmethod
-    def read_responses(case_dir_path: str) -> list[Response]:
+    def read_responses(self, case_dir_path: str) -> list[Response]:
         raise NotImplementedError("This method should be implemented in the subclass.")
 
-    @staticmethod
-    def read_lesions(case_dir_path: str) -> list[Lesion]:
-        responses = BaseLoader.read_responses(case_dir_path)
+    def read_lesions(self, case_dir_path: str) -> list[Lesion]:
+        responses = self.read_responses(case_dir_path)
         return [resp.to_lesion() for resp in responses]
 
     def prepare_dir(self, dcm_root_dir_path: str, number_of_raters: int = 3, verbose=True) -> None:
