@@ -5,14 +5,31 @@
 from abc import ABC, abstractmethod
 
 from pyfroc.loaders.base_loader import BaseLoader
-from pyfroc.signals import Response, Lesion, T_TruePositive, T_FalsePositive
-from pyfroc.keys import CaseKey, RaterCaseKey, T_EvaluationInput, T_EvaluationResult
+from pyfroc.signals import Response, Lesion, T_TruePositives, T_FalsePositives
+from pyfroc.keys import T_EvaluationResult
 
 
 class BaseRater(ABC):
-    @classmethod
+    def __init__(self, loader: BaseLoader):
+        self.loader = loader
+
+    def __len__(self):
+        return len(self.loader)
+
+    def __getitem__(self, key: int) -> T_EvaluationResult:
+        evaluation_input = self.loader[key]
+        casekey, lesions, responses_dict = evaluation_input
+
+        evaluation_result: T_EvaluationResult = (casekey, lesions, {})
+
+        for ratercasekey, responses in responses_dict.items():
+            tp, fp = self.evaluate_case_responses(responses, lesions)
+            evaluation_result[2][ratercasekey] = (tp, fp)
+
+        return evaluation_result
+
     @abstractmethod
-    def evaluate_case_responses(cls, responses: list[Response], lesions: list[Lesion]) -> tuple[T_TruePositive, T_FalsePositive]:
+    def evaluate_case_responses(self, responses: list[Response], lesions: list[Lesion]) -> tuple[T_TruePositives, T_FalsePositives]:
         """Evaluate the responses of a specific case and devide them into true positive and false positive.
 
         Args:
@@ -24,16 +41,3 @@ class BaseRater(ABC):
             False positive (list[Response]): list of Response objects
         """
         raise NotImplementedError()
-
-    @classmethod
-    def evaluate(cls, input: T_EvaluationInput) -> T_EvaluationResult:
-        evaluation_result: T_EvaluationResult = {}
-
-        for casekey, (lesions, responses_dict) in input.items():
-            evaluation_result[casekey] = (lesions, {})
-
-            for ratercasekey, responses in responses_dict.items():
-                tp, fp = cls.evaluate_case_responses(responses, lesions)
-                evaluation_result[casekey][1][ratercasekey] = (tp, fp)
-
-        return evaluation_result
