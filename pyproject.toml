@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pyfroc"
+version = "1.0.0"
+authors = [{ name = "Satoshi Funayama", email = "akchan.acts@gmail.com" }]
+description = "python toolkit for FROC analysis"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "bidict>=0.23.1",
+  "matching>=1.4.3",
+  "MiniballCpp>=0.2.3",
+  "numpy<2.0.0,>=1.2.0",
+  "openpyxl>=3.1.4",
+  "pandas>=2.2.2",
+  "pydicom>=2.4.4",
+  "pynrrd>=1.0.0",
+  "pytypedstream>=0.1.0",
+  "scikit-image>=0.23.2",
+  "tqdm>=4.66.4",
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/akchan/pyfroc"
+Issues = "https://github.com/akchan/pyfroc/issues"
