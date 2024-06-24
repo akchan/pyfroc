@@ -5,8 +5,8 @@ from dataclasses import dataclass
 
 from pyfroc.signals import Response, Lesion, T_TruePositive, T_FalsePositive
 
-T_EvaluationInput = dict["CaseKey", tuple[list[Lesion], dict["RaterCaseKey", list[Response]]]]
-T_EvaluationResult = dict["CaseKey", tuple[list[Lesion], dict["RaterCaseKey", tuple[T_TruePositive, T_FalsePositive]]]]
+T_EvaluationInput  = tuple["CaseKey", list[Lesion], dict["RaterCaseKey", list[Response]]]
+T_EvaluationResult = tuple["CaseKey", list[Lesion], dict["RaterCaseKey", tuple[T_TruePositive, T_FalsePositive]]]]
 
 
 @dataclass(frozen=True)
