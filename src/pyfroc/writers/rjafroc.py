@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from pyfroc.signals import Lesion
+
 from pyfroc.raters.base_rater import T_EvaluationResult
 from .base_writer import BaseWriter
 
