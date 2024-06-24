@@ -66,7 +66,7 @@ class WithinLesionRater(BaseRater):
 
             selected_responses = []
             for response in responses_bidict.keys():
-                if response.is_withinlesion(lesion):
+                if response.is_true_positive(lesion):
                     selected_responses.append(response)
 
             sorted_responses = sorted(selected_responses, key=lambda x: lesion.distance(x))
@@ -78,7 +78,7 @@ class WithinLesionRater(BaseRater):
         for response, player in responses_bidict.items():
             selected_lesions = []
             for lesion in lesions_bidict.keys():
-                if response.is_withinlesion(lesion):
+                if response.is_true_positive(lesion):
                     selected_lesions.append(lesion)
 
             sorted_lesions = sorted(selected_lesions, key=lambda x: response.distance(x))

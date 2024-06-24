@@ -39,7 +39,7 @@ class Response:
     def distance(self, other: T_Signal) -> float:
         return self.coords.distance(other.coords)
 
-    def is_withinlesion(self, lesion: Lesion) -> bool:
+    def is_true_positive(self, lesion: Lesion) -> bool:
         return self.distance(lesion) <= lesion.r
 
     def to_lesion(self) -> Lesion:
