@@ -10,15 +10,6 @@ from pyfroc.keys import CaseKey, RaterCaseKey, T_EvaluationInput, T_EvaluationRe
 
 
 class BaseRater(ABC):
-    def __init__(self, loader: BaseLoader) -> None:
-        self.loader = loader
-
-    def __len__(self) -> int:
-        return len(self.loader)
-        
-    def __getitem__(self, key: int) -> tuple[list[Lesion], dict[RaterCaseKey, list[Response]]]:
-        return self.loader[key]
-    
     @classmethod
     @abstractmethod
     def evaluate_case_responses(cls, responses: list[Response], lesions: list[Lesion]) -> tuple[T_TruePositive, T_FalsePositive]:
