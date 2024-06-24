@@ -40,12 +40,13 @@ class SegNRRD:
 
 
 class SegNRRDLoader(BaseLoader):
-    def read_responses(self, case_dir_path: str) -> list[Response]:
+    @staticmethod
+    def read_responses(case_dir_path: str) -> list[Response]:
         series_responses = []
 
-        for segnrrd_path in self.list_segnrrd_path(case_dir_path):
-            segnrrd = self.read_segnrrd(segnrrd_path)
-            series_responses.extend(self.segnrrd2responses(segnrrd))
+        for segnrrd_path in SegNRRDLoader.list_segnrrd_path(case_dir_path):
+            segnrrd = SegNRRDLoader.read_segnrrd(segnrrd_path)
+            series_responses.extend(SegNRRDLoader.segnrrd2responses(segnrrd))
 
         return series_responses
 
@@ -65,7 +66,7 @@ class SegNRRDLoader(BaseLoader):
             for label_i in range(1, label_max + 1):
                 mask_i = (mask_labeled == label_i).astype(mask_dtype)
 
-                c, r = cls._mask2minsphere(mask_i, segnrrd.space_directions)
+                c, r = SegNRRDLoader.mask2minisphere(mask_i, segnrrd.space_directions)
                 assert r > 0.0, f"Invalid radius or {r} for {seg}"
 
                 res = Response(coords=SeriesCoordinates(*c),
