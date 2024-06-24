@@ -11,7 +11,7 @@ import re
 import pydicom
 
 from pyfroc.keys import CaseKey, RaterCaseKey, T_EvaluationInput
-from pyfroc.signals import Response, Lesion
+from pyfroc.signals import Response, Lesion, sort_signals
 from pyfroc.utils import list_dcm_files
 
 
@@ -36,13 +36,15 @@ class BaseLoader(ABC):
             raise IndexError("Index out of range")
 
         casekey = self.casekey_list[index]
-        lesions = self.read_lesions(self._casekey2path(casekey))
+        lesions_raw = self.read_lesions(self._casekey2path(casekey))
+        lesions = sort_signals(lesions_raw)
 
         responses = {}
 
         for rater_id in self.rater_list:
             ratercasekey = casekey.to_ratercasekey(rater_id=rater_id)
-            responses[ratercasekey] = self.read_responses(self._ratercasekey2path(ratercasekey))
+            responses_raw = self.read_responses(self._ratercasekey2path(ratercasekey))
+            responses[ratercasekey] = sort_signals(responses_raw)
 
         return casekey, lesions, responses
 

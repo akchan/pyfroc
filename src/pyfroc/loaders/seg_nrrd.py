@@ -14,7 +14,7 @@ from skimage.morphology import binary_erosion
 
 from pyfroc.coords import SeriesCoordinates
 from pyfroc.loaders.base_loader import BaseLoader
-from pyfroc.signals import Response, sort_signals
+from pyfroc.signals import Response
 from pyfroc.miniball_util import get_min_sphere
 
 
@@ -74,8 +74,6 @@ class SegNRRDLoader(BaseLoader):
                                confidence=seg.confidence)
 
                 responses.append(res)
-
-        responses = sort_signals(responses)
 
         return responses
 
