@@ -10,13 +10,18 @@ from pyfroc.keys import T_EvaluationResult
 
 
 class BaseRater(ABC):
-    def __init__(self, loader: BaseLoader):
+    def __init__(self, loader: BaseLoader, use_cache=True):
         self.loader = loader
+        self.use_cache = use_cache
+        self.cache = {}
 
     def __len__(self):
         return len(self.loader)
 
     def __getitem__(self, key: int) -> T_EvaluationResult:
+        if self.use_cache and key in self.cache:
+            return self.cache[key]
+
         evaluation_input = self.loader[key]
         casekey, lesions, responses_dict = evaluation_input
 
@@ -25,6 +30,8 @@ class BaseRater(ABC):
         for ratercasekey, responses in responses_dict.items():
             tp, fp = self.evaluate_case_responses(responses, lesions)
             evaluation_result[2][ratercasekey] = (tp, fp)
+
+        self.cache[key] = evaluation_result
 
         return evaluation_result
 
