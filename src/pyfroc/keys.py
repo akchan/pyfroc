@@ -3,10 +3,10 @@
 
 from dataclasses import dataclass
 
-from pyfroc.signals import Response, Lesion, T_TruePositive, T_FalsePositive
+from pyfroc.signals import Response, Lesion, T_TruePositives, T_FalsePositives
 
 T_EvaluationInput  = tuple["CaseKey", list[Lesion], dict["RaterCaseKey", list[Response]]]
-T_EvaluationResult = tuple["CaseKey", list[Lesion], dict["RaterCaseKey", tuple[T_TruePositive, T_FalsePositive]]]]
+T_EvaluationResult = tuple["CaseKey", list[Lesion], dict["RaterCaseKey", tuple[T_TruePositives, T_FalsePositives]]]]
 
 
 @dataclass(frozen=True)
