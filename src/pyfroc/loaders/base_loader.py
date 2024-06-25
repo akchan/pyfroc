@@ -146,21 +146,6 @@ class BaseLoader(ABC):
         assert len(self.rater_list) == len(rater_set), "Duplication is found in the response directory"
 
     @staticmethod
-    def _path2ratercasekey(dir_path: str) -> RaterCaseKey | None:
-        # Search case directories
-        dirpath_pattern = r".*?([^\/]+)\/([^\/]+)\/([0-9]{8})_([A-Z]{2})\/SE([0-9]+)"
-        m = re.match(dirpath_pattern, dir_path)
-
-        if m is None:
-            return None
-        else:
-            return RaterCaseKey(rater_name=m.group(1),
-                                patient_id=m.group(2),
-                                study_date=m.group(3),
-                                modality=m.group(4),
-                                se_num=m.group(5))
-
-    @staticmethod
     def _casekey2path(casekey: CaseKey) -> str:
         return os.path.join(casekey.patient_id,
                             f"{casekey.study_date:>08s}_{casekey.modality.upper()}",
