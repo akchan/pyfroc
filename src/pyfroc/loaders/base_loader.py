@@ -16,8 +16,8 @@ from pyfroc.utils import list_dcm_files
 
 
 class BaseLoader(ABC):
-    REFERENCE_DIR_NAME = "reference"
-    RESPONSE_DIR_NAME = "responses"
+    REFERENCE_ROOT_DIR_NAME = "reference"
+    RESPONSE_ROOT_DIR_NAME = "responses"
 
     def __init__(self, root_dir_path: str, verbose=True):
         self.root_dir_path = root_dir_path
@@ -36,17 +36,17 @@ class BaseLoader(ABC):
             raise IndexError("Index out of range")
 
         casekey = self.casekey_list[index]
-        lesions_raw = self.read_lesions(self._casekey2path(casekey))
+        lesions_raw = self.read_lesions(self._lesion_dir_path(casekey))
         lesions = sort_signals(lesions_raw)
 
-        responses = {}
+        rater_responses = {}
 
-        for rater_id in self.rater_list:
-            ratercasekey = casekey.to_ratercasekey(rater_id=rater_id)
-            responses_raw = self.read_responses(self._ratercasekey2path(ratercasekey))
-            responses[ratercasekey] = sort_signals(responses_raw)
+        for rater in self.rater_list:
+            ratercasekey = casekey.to_ratercasekey(rater_name=rater)
+            responses_raw = self.read_responses(self._response_dir_path(ratercasekey))
+            rater_responses[ratercasekey] = sort_signals(responses_raw)
 
-        return casekey, lesions, responses
+        return casekey, lesions, rater_responses
 
     @abstractmethod
     def read_responses(self, case_dir_path: str) -> list[Response]:
@@ -56,7 +56,10 @@ class BaseLoader(ABC):
         responses = self.read_responses(case_dir_path)
         return [resp.to_lesion() for resp in responses]
 
-    def prepare_dir(self, dcm_root_dir_path: str, number_of_raters: int = 3, verbose=True) -> None:
+    def prepare_dir(self, dcm_root_dir_path: str,
+                    number_of_raters: int = 3,
+                    number_of_modality_or_treatment=2,
+                    verbose=True) -> None:
         """Prepare the directories to store the reference lesion and response files.
 
         This method prepares the necessary directories to store the files for further processing.
@@ -84,21 +87,22 @@ class BaseLoader(ABC):
         for dcm_path in dcm_path_list:
             dcm = pydicom.dcmread(dcm_path)
 
-            key = CaseKey(patient_id=str(dcm.PatientID),
-                          study_date=str(dcm.StudyDate),
-                          modality=str(dcm.Modality),
-                          se_num=str(dcm.SeriesNumber))
+            for i in range(number_of_modality_or_treatment):
+                key = CaseKey(patient_id=str(dcm.PatientID),
+                              study_date=str(dcm.StudyDate),
+                              modality=f"{dcm.Modality}{i}",
+                              se_num=str(dcm.SeriesNumber))
 
-            casekey_set.add(key)
+                casekey_set.add(key)
 
         self.casekey_list = list(casekey_set)
 
         # Create a reference directory
-        self._create_dirs(self._reference_dir_path())
+        self._create_dirs(self._reference_root_dir_path())
 
         # Create response directories
         for i in range(number_of_raters):
-            rater_dir_path = os.path.join(self._response_dir_path(), f"rater{i+1:02d}")
+            rater_dir_path = os.path.join(self._response_root_dir_path(), f"rater{i+1:02d}")
             self._create_dirs(rater_dir_path)
 
         if verbose:
@@ -115,7 +119,7 @@ class BaseLoader(ABC):
         self.casekey_list.clear()
         casekey_set = set()
 
-        for dir_path in glob.glob(os.path.join(self._reference_dir_path(), "**"), recursive=True):
+        for dir_path in glob.glob(os.path.join(self._reference_root_dir_path(), "**"), recursive=True):
             if not os.path.isdir(dir_path):
                 continue
 
@@ -134,16 +138,11 @@ class BaseLoader(ABC):
         self.rater_list.clear()
         rater_set = set()
 
-        for dir_path in glob.glob(os.path.join(self._response_dir_path(), "**"), recursive=True):
+        for dir_path in glob.glob(os.path.join(self._response_root_dir_path(), "*")):
             if not os.path.isdir(dir_path):
                 continue
 
-            key = self._path2casekey(dir_path)
-
-            if key is None:
-                continue
-
-            rater_set.add(key)
+            rater_set.add(os.path.basename(dir_path))
 
         self.rater_list = list(rater_set)
 
@@ -172,7 +171,7 @@ class BaseLoader(ABC):
         if m is None:
             return None
         else:
-            return RaterCaseKey(rater_id=m.group(1),
+            return RaterCaseKey(rater_name=m.group(1),
                                 patient_id=m.group(2),
                                 study_date=m.group(3),
                                 modality=m.group(4),
@@ -180,14 +179,23 @@ class BaseLoader(ABC):
 
     @staticmethod
     def _casekey2path(casekey: CaseKey) -> str:
-        return os.path.join(casekey.patient_id, f"{casekey.study_date:>08s}_{casekey.modality.upper()}", f"SE{casekey.se_num}")
+        return os.path.join(casekey.patient_id,
+                            f"{casekey.study_date:>08s}_{casekey.modality.upper()}",
+                            f"SE{casekey.se_num}")
 
     @staticmethod
-    def _ratercasekey2path(ratercakey: RaterCaseKey) -> str:
-        return os.path.join(ratercakey.rater_id, ratercakey.patient_id, f"{ratercakey.study_date:>08s}_{ratercakey.modality.upper()}", f"SE{ratercakey.se_num}")
+    def _ratercasekey2path(ratercasekey: RaterCaseKey) -> str:
+        return os.path.join(ratercasekey.rater_name,
+                            BaseLoader._casekey2path(ratercasekey.to_casekey()))
 
-    def _response_dir_path(self) -> str:
-        return os.path.join(self.root_dir_path, self.RESPONSE_DIR_NAME)
+    def _response_root_dir_path(self) -> str:
+        return os.path.join(self.root_dir_path, self.RESPONSE_ROOT_DIR_NAME)
 
-    def _reference_dir_path(self) -> str:
-        return os.path.join(self.root_dir_path, self.REFERENCE_DIR_NAME)
+    def _reference_root_dir_path(self) -> str:
+        return os.path.join(self.root_dir_path, self.REFERENCE_ROOT_DIR_NAME)
+
+    def _lesion_dir_path(self, casekey: CaseKey) -> str:
+        return os.path.join(self._reference_root_dir_path(), self._casekey2path(casekey))
+
+    def _response_dir_path(self, ratercasekey: RaterCaseKey) -> str:
+        return os.path.join(self._response_root_dir_path(), self._ratercasekey2path(ratercasekey))
