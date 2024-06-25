@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pyfroc.signals import Response, Lesion, T_TruePositives, T_FalsePositives
 
 T_EvaluationInput  = tuple["CaseKey", list[Lesion], dict["RaterCaseKey", list[Response]]]
-T_EvaluationResult = tuple["CaseKey", list[Lesion], dict["RaterCaseKey", tuple[T_TruePositives, T_FalsePositives]]]]
+T_EvaluationResult = tuple["CaseKey", list[Lesion], dict["RaterCaseKey", tuple[T_TruePositives, T_FalsePositives]]]
 
 
 @dataclass(frozen=True)
@@ -16,14 +16,14 @@ class CaseKey:
     modality: str
     se_num: str
 
-    def to_ratercasekey(self, rater_id: str) -> "RaterCaseKey":
-        return RaterCaseKey(rater_id=rater_id, patient_id=self.patient_id,
+    def to_ratercasekey(self, rater_name: str) -> "RaterCaseKey":
+        return RaterCaseKey(rater_name=rater_name, patient_id=self.patient_id,
                             study_date=self.study_date, modality=self.modality, se_num=self.se_num)
 
 
 @dataclass(frozen=True)
 class RaterCaseKey:
-    rater_id: str
+    rater_name: str
     patient_id: str
     study_date: str
     modality: str
@@ -34,3 +34,4 @@ class RaterCaseKey:
                        study_date=self.study_date,
                        modality=self.modality,
                        se_num=self.se_num)
+
