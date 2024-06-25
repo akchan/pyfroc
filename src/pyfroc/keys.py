@@ -30,6 +30,21 @@ class CaseKey:
                        study_date=dcm.StudyDate,
                        modality=modality,
                        se_num=dcm.SeriesNumber)
+
+    @classmethod
+    def from_path(cls, dir_path: str) -> "CaseKey" | None:
+        # Search case directories
+        dirpath_pattern = r".*?([^\/]+)\/([0-9]{8})_([A-Z]{2}\d*)\/SE([0-9]+)"
+        m = re.match(dirpath_pattern, dir_path)
+
+        if m is None:
+            return None
+        else:
+            return CaseKey(patient_id=m.group(1),
+                           study_date=m.group(2),
+                           modality=m.group(3),
+                           se_num=m.group(4))
+
     def to_ratercasekey(self, rater_name: str) -> "RaterCaseKey":
         return RaterCaseKey(rater_name=rater_name, patient_id=self.patient_id,
                             study_date=self.study_date, modality=self.modality, se_num=self.se_num)
