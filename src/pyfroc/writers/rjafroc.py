@@ -1,25 +1,57 @@
 #!/usr/bin/env python
 # coding: UTF-8
 
+
 from dataclasses import dataclass
+from collections import defaultdict
 
+from bidict import bidict
 import pandas as pd
+from tqdm import tqdm
 
 
-from pyfroc.raters.base_rater import T_EvaluationResult
+from pyfroc.keys import CaseKey
+from pyfroc.raters.base_rater import BaseRater
+from pyfroc.signals import Lesion
 from .base_writer import BaseWriter
 
 
+T_rjafroc_casekey_lesion_dict = dict[tuple[CaseKey, Lesion | None], "RJAFROC_IDs"]
+
+
+class ObjIDbidict:
+    def __init__(self, idx_start=1):
+        self.dict = bidict()
+        self.idx_start = int(idx_start)
+
+    def get_id_from(self, obj):
+        if obj not in self.dict:
+            self.dict[obj] = len(self.dict) + self.idx_start
+        return self.dict[obj]
+
+    def get_obj_from(self, id: int):
+        return self.dict.inv[id]
+
+    def keys(self):
+        return self.dict.keys()
+
+    def values(self):
+        return self.dict.values()
+
+    def items(self):
+        return self.dict.items()
+
+
 @dataclass(frozen=True)
-class LesionInfo:
+class RJAFROC_IDs:
+    case_id: int
     lesion_id: int
-    weight: float
+    modality_id: int
 
 
 class RJAFROCWriter(BaseWriter):
     @classmethod
-    def write(cls, xlsx_path: str,
-              evaluation_result: T_EvaluationResult) -> None:
+    def write(cls, xlsx_path: str, rater: BaseRater) -> None:
         # Prepare dataframes
         columns_df_tp = ["ReaderID", "ModalityID", "CaseID", "LesionID", "TP_Rating"]
         df_tp = pd.DataFrame(columns=columns_df_tp)
@@ -34,67 +66,60 @@ class RJAFROCWriter(BaseWriter):
         truth_list = []
 
         # Prepare a conversion dictionary
-        casekey2caseid = cls._build_casekey2caseid_dict(evaluation_result)
-        casekey2modalityid = cls._build_casekey2modalityid_dict(evaluation_result)
-        ratercasekey2readerid = cls._build_ratercasekey2readerid_dict(evaluation_result)
-        lesion2lesionid = cls._build_lesion2lesionid_dict(evaluation_result)
+        modality2modalityid = ObjIDbidict(idx_start=0)
+        raterid2readerid = ObjIDbidict(idx_start=0)
+        lesionid_modalityid_set = defaultdict(set)
 
-        # Write to dataframes (TRUTH sheet)
-        readerids_str = ",".join(map(str, sorted(set(ratercasekey2readerid.values()))))
-        modalityids_str = ",".join(map(str, sorted(set(casekey2modalityid.values()))))
-        for casekey, (lesions, rater_result_dict) in evaluation_result.items():
-            case_id = casekey2caseid[casekey]
+        rjafroc_casekey_lesion_dict: T_rjafroc_casekey_lesion_dict = {}
 
+        # Prepare progress bar
+        progress_bar = tqdm(desc="Processing ...", total=len(rater)+1)
+
+        # Read evaluation results
+        for case_id, (casekey, lesions, rater_result_dict) in enumerate(rater):
+            modality_id = modality2modalityid.get_id_from(casekey.modality)
+
+            # TRUTH sheet
             n_lesions = len(lesions)
-
             if n_lesions == 0:
+                lesion_id = 0
+
+                rjafroc_casekey_lesion_dict[(casekey, None)] = RJAFROC_IDs(case_id, lesion_id, modality_id)
+
+                lesionid_modalityid_set[(case_id, lesion_id)].add(modality_id)
+
                 truth_list.append({
                     "CaseID": case_id,
-                    "LesionID": 0,
-                    "Weight": 0,
-                    "ReaderID": readerids_str,
-                    "ModalityID": modalityids_str,
-                    "Paradigm": "",
-                })
-                continue
-
-            lesion_weight = 1.0 / n_lesions
-
-            for lesion in lesions:
-                truth_list.append({
-                    "CaseID": case_id,
-                    "LesionID": lesion2lesionid[(casekey, lesion)],
-                    "Weight": lesion_weight,
-                    "ReaderID": readerids_str,
-                    "ModalityID": modalityids_str,
-                    "Paradigm": "",
-                })
-
-        # Set paradigm cells
-        if len(truth_list) < 2:
-            for _ in range(2 - len(truth_list)):
-                truth_list.append({
-                    "CaseID": "",
-                    "LesionID": "",
-                    "Weight": "",
+                    "LesionID": lesion_id,
+                    "Weight": 0.0,
                     "ReaderID": "",
                     "ModalityID": "",
                     "Paradigm": "",
                 })
-        truth_list[0]["Paradigm"] = "FROC"
-        truth_list[1]["Paradigm"] = "FCTRL"
+            else:
+                lesion_weight = 1.0 / n_lesions
 
-        # Write to dataframes (TP and FP sheets)
-        for casekey, (lesions, rater_result_dict) in evaluation_result.items():
-            case_id = casekey2caseid[casekey]
+                for lesion_id, lesion in zip(range(1, n_lesions+1), lesions):
+                    rjafroc_casekey_lesion_dict[(casekey, lesion)] = RJAFROC_IDs(case_id, lesion_id, modality_id)
 
+                    lesionid_modalityid_set[(case_id, lesion_id)].add(modality_id)
+
+                    truth_list.append({
+                        "CaseID": case_id,
+                        "LesionID": lesion_id,
+                        "Weight": lesion_weight,
+                        "ReaderID": "",
+                        "ModalityID": "",
+                        "Paradigm": "",
+                    })
+
+            # TP and FP sheet
             for ratercasekey, (tp, fp) in rater_result_dict.items():
-                case_id = casekey2caseid[casekey]
-                reader_id = ratercasekey2readerid[ratercasekey]
-                modality_id = casekey2modalityid[casekey]
+                reader_id = raterid2readerid.get_id_from(ratercasekey.rater_name)
 
                 for response, lesion in tp:
-                    lesion_id = lesion2lesionid[(casekey, lesion)]
+                    lesion_id = rjafroc_casekey_lesion_dict[(casekey, lesion)].lesion_id
+
                     tp_list.append({
                         "ReaderID": reader_id,
                         "ModalityID": modality_id,
@@ -110,6 +135,31 @@ class RJAFROCWriter(BaseWriter):
                         "CaseID": case_id,
                         "FP_Rating": response.confidence,
                     })
+
+            progress_bar.update(1)
+
+        # Set paradigm cells
+        if len(truth_list) < 2:
+            for _ in range(2 - len(truth_list)):
+                truth_list.append({
+                    "CaseID": "",
+                    "LesionID": "",
+                    "Weight": "",
+                    "ReaderID": "",
+                    "ModalityID": "",
+                    "Paradigm": "",
+                })
+        truth_list[0]["Paradigm"] = "FROC"
+        truth_list[1]["Paradigm"] = "FCTRL"
+
+        # Set reader_ids and modality_ids in the TRUTH sheet
+        readerids_str = ",".join(map(str, sorted(set(raterid2readerid.values()))))
+        for row in truth_list:
+            row["ReaderID"] = readerids_str
+
+            modalities = lesionid_modalityid_set[(row["CaseID"], row["LesionID"])]
+            modality_ids = ",".join(map(str, sorted(modalities)))
+            row["ModalityID"] = modality_ids
 
         # Check empty
         if len(tp_list) == 0:
@@ -127,15 +177,6 @@ class RJAFROCWriter(BaseWriter):
                 "CaseID": "",
                 "FP_Rating": "",
             })
-        if len(truth_list) == 0:
-            truth_list.append({
-                "CaseID": "",
-                "LesionID": "",
-                "Weight": "",
-                "ReaderID": "",
-                "ModalityID": "",
-                "Paradigm": "",
-            })
 
         # Create dataframes from dictionaries
         df_tp = pd.DataFrame(tp_list)
@@ -149,78 +190,43 @@ class RJAFROCWriter(BaseWriter):
             df_fp.to_excel(writer, sheet_name='FP', index=False)
             df_truth.to_excel(writer, sheet_name='TRUTH', index=False)
 
-            cls._write_supporting_information(writer, casekey2caseid, casekey2modalityid, lesion2lesionid, ratercasekey2readerid)
+            cls._write_supporting_information(writer, rjafroc_casekey_lesion_dict, raterid2readerid)
 
-    @classmethod
-    def _build_casekey2caseid_dict(cls, evaluation_result: T_EvaluationResult) -> dict:
-        patientid_set = set([casekey.patient_id for casekey in evaluation_result.keys()])
-        patientid2caseid = {patient_id: i+1 for i, patient_id in enumerate(patientid_set)}
-        casekey2caseid = {casekey: patientid2caseid[casekey.patient_id] for casekey in evaluation_result.keys()}
-        return casekey2caseid
-
-    @classmethod
-    def _build_casekey2modalityid_dict(cls, evaluation_result: T_EvaluationResult) -> dict:
-        modality_set = set([casekey.modality for casekey in evaluation_result.keys()])
-        modality2modalityid = {modality: i for i, modality in enumerate(modality_set)}
-        casekey2modalityid = {casekey: modality2modalityid[casekey.modality] for casekey in evaluation_result.keys()}
-        return casekey2modalityid
-
-    @classmethod
-    def _build_ratercasekey2readerid_dict(cls, evaluation_result: T_EvaluationResult) -> dict:
-        ratercasekey_list = []
-        for lesions, rater_result_dict in evaluation_result.values():
-            ratercasekey_list.extend(rater_result_dict.keys())
-
-        rater_name_set = set([ratercasekey.rater_id for ratercasekey in ratercasekey_list])
-        ratername2readerid = {rater_name: i for i, rater_name in enumerate(rater_name_set)}
-
-        ratercasekey2readerid = {ratercasekey: ratername2readerid[ratercasekey.rater_id] for ratercasekey in ratercasekey_list}
-
-        return ratercasekey2readerid
-
-    @classmethod
-    def _build_lesion2lesionid_dict(cls, evaluation_result: T_EvaluationResult) -> dict:
-        lesion2lesionid = {}
-
-        for casekey, (lesions, rater_result_dict) in evaluation_result.items():
-            for i, lesion in enumerate(lesions):
-                key = (casekey, lesion)
-                lesion2lesionid[key] = i + 1
-
-        return lesion2lesionid
+        progress_bar.update(1)
+        progress_bar.close()
 
     @classmethod
     def _write_supporting_information(cls, writer: pd.ExcelWriter,
-                                      casekey2caseid: dict,
-                                      casekey2modalityid: dict,
-                                      lesion2lesionid: dict,
-                                      ratercasekey2readerid: dict) -> None:
+                                      rjafroc_casekey_lesion_dict: T_rjafroc_casekey_lesion_dict,
+                                      ratername2readerid: ObjIDbidict) -> None:
         # Write supporting information
         lesions_list = []
 
-        for (casekey, lesion), lesion_id in lesion2lesionid.items():
+        for (casekey, lesion), rjafroc_id in rjafroc_casekey_lesion_dict.items():
+            if lesion is None:
+                x, y, z, r = ("", "", "", "")
+            else:
+                x, y, z, r = (lesion.coords.x, lesion.coords.y, lesion.coords.z, lesion.r)
+
             lesions_list.append({
-                "LesionID": lesion_id,
-                "CaseID": casekey2caseid[casekey],
-                "ModalityID": casekey2modalityid[casekey],
+                "ModalityID": rjafroc_id.modality_id,
+                "modality": casekey.modality,
+                "CaseID": rjafroc_id.case_id,
                 "patient_id": casekey.patient_id,
                 "study_date": casekey.study_date,
-                "modality": casekey.modality,
                 "se_num": casekey.se_num,
-                "x": lesion.coords.x,
-                "y": lesion.coords.y,
-                "z": lesion.coords.z,
-                "diameter": lesion.r,
+                "LesionID": rjafroc_id.lesion_id,
+                "x": x,
+                "y": y,
+                "z": z,
+                "diameter": r,
             })
 
         pd.DataFrame(lesions_list).to_excel(writer, sheet_name='Suppl_Lesions', index=False)
 
         # Prepare reader_id to rater_name
-        readerid2ratername_dict = {}
-        for ratercasekey, reader_id in ratercasekey2readerid.items():
-            readerid2ratername_dict[reader_id] = ratercasekey.rater_id
         ratername_list = []
-        for reader_id, rater_name in readerid2ratername_dict.items():
+        for rater_name, reader_id in ratername2readerid.items():
             ratername_list.append({
                 "ReaderID": reader_id,
                 "Rater": rater_name,
