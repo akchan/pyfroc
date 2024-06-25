@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from pyfroc.signals import Response, Lesion, T_TruePositives, T_FalsePositives
 
-T_EvaluationInput  = tuple["CaseKey", list[Lesion], dict["RaterCaseKey", list[Response]]]
+T_EvaluationInput = tuple["CaseKey", list[Lesion], dict["RaterCaseKey", list[Response]]]
 T_EvaluationResult = tuple["CaseKey", list[Lesion], dict["RaterCaseKey", tuple[T_TruePositives, T_FalsePositives]]]
 
 
@@ -34,4 +34,3 @@ class RaterCaseKey:
                        study_date=self.study_date,
                        modality=self.modality,
                        se_num=self.se_num)
-
