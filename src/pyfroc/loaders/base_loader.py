@@ -88,10 +88,7 @@ class BaseLoader(ABC):
             dcm = pydicom.dcmread(dcm_path)
 
             for i in range(number_of_modality_or_treatment):
-                key = CaseKey(patient_id=str(dcm.PatientID),
-                              study_date=str(dcm.StudyDate),
-                              modality=f"{dcm.Modality}{i}",
-                              se_num=str(dcm.SeriesNumber))
+                key = CaseKey.from_dcm(dcm, modality_id=i)
 
                 casekey_set.add(key)
 
