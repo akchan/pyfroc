@@ -35,6 +35,10 @@ class BaseRater(ABC):
 
         return evaluation_result
 
+    def __iter__(self):
+        for key in range(len(self)):
+            yield self[key]
+
     @abstractmethod
     def evaluate_case_responses(self, responses: list[Response], lesions: list[Lesion]) -> tuple[T_TruePositives, T_FalsePositives]:
         """Evaluate the responses of a specific case and devide them into true positive and false positive.
