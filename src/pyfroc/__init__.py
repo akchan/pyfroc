@@ -3,6 +3,4 @@
 
 
 from .pyfroc import prepare, evaluate
-
-
-VERSION = "0.1.0"
+from .__about__ import __version__

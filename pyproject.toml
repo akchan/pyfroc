@@ -31,3 +31,6 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/akchan/pyfroc"
 Issues = "https://github.com/akchan/pyfroc/issues"
+
+[tool.hatch.version]
+path = "src/pyfroc/__about__.py"
