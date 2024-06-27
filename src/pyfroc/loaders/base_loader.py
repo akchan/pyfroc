@@ -3,10 +3,11 @@
 
 
 from abc import ABC, abstractmethod
+from itertools import product
 
 import glob
 import os
-import re
+import sys
 
 import pydicom
 
@@ -22,27 +23,24 @@ class BaseLoader(ABC):
     def __init__(self, root_dir_path: str, verbose=True):
         self.root_dir_path = root_dir_path
         self.verbose = verbose
-        self.casekey_list: list[CaseKey] = []
-        self.rater_list: list[str] = []
+        self.casekey_ratercasekey_dict: dict[CaseKey, list[RaterCaseKey]] = {}
 
-        self._init_casekey_list()
-        self._init_rater_list()
+        self._init_casekey_ratercasekey_dict()
 
     def __len__(self):
-        return len(self.casekey_list)
+        return len(self.casekey_ratercasekey_dict)
 
     def __getitem__(self, index: int) -> T_EvaluationInput:
         if index >= len(self):
             raise IndexError("Index out of range")
 
-        casekey = self.casekey_list[index]
+        casekey = list(self.casekey_ratercasekey_dict.keys())[index]
         lesions_raw = self.read_lesions(self._lesion_dir_path(casekey))
         lesions = sort_signals(lesions_raw)
 
         rater_responses = {}
 
-        for rater in self.rater_list:
-            ratercasekey = casekey.to_ratercasekey(rater_name=rater)
+        for ratercasekey in self.casekey_ratercasekey_dict[casekey]:
             responses_raw = self.read_responses(self._response_dir_path(ratercasekey))
             rater_responses[ratercasekey] = sort_signals(responses_raw)
 
@@ -79,6 +77,7 @@ class BaseLoader(ABC):
         dcm_path_list = list_dcm_files(dcm_root_dir_path, recursive=True)
 
         if len(dcm_path_list) == 0:
+            print("No DICOM files found.", file=sys.stderr)
             return None
 
         # Set casekey_list from dicom files
@@ -88,73 +87,76 @@ class BaseLoader(ABC):
             dcm = pydicom.dcmread(dcm_path)
 
             for i in range(number_of_modality_or_treatment):
-                key = CaseKey.from_dcm(dcm, modality_id=i)
+                key = CaseKey.from_dcm(dcm)
 
                 casekey_set.add(key)
 
-        self.casekey_list = list(casekey_set)
+        # Set self.casekey_ratercasekey_dict
+        self.casekey_ratercasekey_dict.clear()
+        for casekey in list(casekey_set):
+            self.casekey_ratercasekey_dict[casekey] = []
+
+            # Set ratercasekey based on self.casekey_list
+            for rater_id, modality_id in product(range(number_of_raters),
+                                                 range(number_of_modality_or_treatment)):
+                rater_name = f"rater{rater_id+1:02d}"
+                ratercasekey = casekey.to_ratercasekey(rater_name=rater_name, modality_id=modality_id)
+
+                self.casekey_ratercasekey_dict[casekey].append(ratercasekey)
 
         # Create a reference directory
-        self._create_dirs(self._reference_root_dir_path())
-
-        # Create response directories
-        for i in range(number_of_raters):
-            rater_dir_path = os.path.join(self._response_root_dir_path(), f"rater{i+1:02d}")
-            self._create_dirs(rater_dir_path)
+        self._create_dirs()
 
         if verbose:
-            n_cases = len(set(map(lambda c: c.patient_id, self.casekey_list)))
-            n_series = len(self.casekey_list)
-            print(f"Prepared: {n_cases} cases, {n_series} series")
+            n_cases = len(set(map(lambda c: c.patient_id, self.casekey_ratercasekey_dict.keys())))
+            n_series = len(self.casekey_ratercasekey_dict.keys())
+            print("Prepared:")
+            print(f"  {n_cases} cases, {n_series} series")
+            print(f"  {number_of_raters} raters")
+            print(f"  {number_of_modality_or_treatment} modalities or treatments")
 
-    def _create_dirs(self, tgt_dir_path: str) -> None:
-        for casekey in self.casekey_list:
-            se_dir_path = os.path.join(tgt_dir_path, self._casekey2path(casekey))
-            os.makedirs(se_dir_path, exist_ok=True)
+    def _create_dirs(self) -> None:
+        # Create reference directories
+        for casekey, ratercasekey_list in self.casekey_ratercasekey_dict.items():
+            dir_path = os.path.join(self._reference_root_dir_path(), casekey.to_path())
+            os.makedirs(dir_path, exist_ok=True)
 
-    def _init_casekey_list(self) -> None:
-        self.casekey_list.clear()
-        casekey_set = set()
+            # Create response directories
+            for ratercasekey in ratercasekey_list:
+                dir_path = os.path.join(self._response_root_dir_path(), ratercasekey.to_path())
+                os.makedirs(dir_path, exist_ok=True)
 
+    def _init_casekey_ratercasekey_dict(self) -> None:
+        self.casekey_ratercasekey_dict.clear()
+
+        # Search reference directories
         for dir_path in glob.glob(os.path.join(self._reference_root_dir_path(), "**"), recursive=True):
             if not os.path.isdir(dir_path):
                 continue
 
-            key = CaseKey.from_path(dir_path)
+            ratercasekey = CaseKey.from_path(dir_path)
 
-            if key is None:
+            if ratercasekey is None:
                 continue
 
-            casekey_set.add(key)
+            self.casekey_ratercasekey_dict[ratercasekey] = []
 
-        self.casekey_list = list(casekey_set)
-
-        assert len(self.casekey_list) == len(casekey_set), "Duplication found in the reference directory"
-
-    def _init_rater_list(self) -> None:
-        self.rater_list.clear()
-        rater_set = set()
-
-        for dir_path in glob.glob(os.path.join(self._response_root_dir_path(), "*")):
+        # Search response directories
+        for dir_path in glob.glob(os.path.join(self._response_root_dir_path(), "**"), recursive=True):
             if not os.path.isdir(dir_path):
                 continue
 
-            rater_set.add(os.path.basename(dir_path))
+            ratercasekey = RaterCaseKey.from_path(dir_path)
 
-        self.rater_list = list(rater_set)
+            if ratercasekey is None:
+                continue
 
-        assert len(self.rater_list) == len(rater_set), "Duplication is found in the response directory"
+            casekey = ratercasekey.to_casekey()
 
-    @staticmethod
-    def _casekey2path(casekey: CaseKey) -> str:
-        return os.path.join(casekey.patient_id,
-                            f"{casekey.study_date:>08s}_{casekey.modality.upper()}",
-                            f"SE{casekey.se_num}")
+            dir_path = os.path.join(self._reference_root_dir_path(), casekey.to_path())
+            assert casekey in self.casekey_ratercasekey_dict, f"Directory {dir_path} not found in the reference directory, but found in the response directory."
 
-    @staticmethod
-    def _ratercasekey2path(ratercasekey: RaterCaseKey) -> str:
-        return os.path.join(ratercasekey.rater_name,
-                            BaseLoader._casekey2path(ratercasekey.to_casekey()))
+            self.casekey_ratercasekey_dict[casekey].append(ratercasekey)
 
     def _response_root_dir_path(self) -> str:
         return os.path.join(self.root_dir_path, self.RESPONSE_ROOT_DIR_NAME)
@@ -163,7 +165,12 @@ class BaseLoader(ABC):
         return os.path.join(self.root_dir_path, self.REFERENCE_ROOT_DIR_NAME)
 
     def _lesion_dir_path(self, casekey: CaseKey) -> str:
-        return os.path.join(self._reference_root_dir_path(), self._casekey2path(casekey))
+        return os.path.join(self._reference_root_dir_path(), casekey.to_path())
 
     def _response_dir_path(self, ratercasekey: RaterCaseKey) -> str:
-        return os.path.join(self._response_root_dir_path(), self._ratercasekey2path(ratercasekey))
+        return os.path.join(self._response_root_dir_path(), ratercasekey.to_path())
+
+
+class DirectorySetup(BaseLoader):
+    def read_responses(self, case_dir_path: str) -> list[Response]:
+        return []
