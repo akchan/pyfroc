@@ -3,9 +3,9 @@
 
 from typing import Type
 
-from pyfroc.loaders import BaseLoader, DirectorySetup
-from pyfroc.raters import BaseRater
-from pyfroc.writers import BaseWriter
+from pyfroc.loaders import BaseLoader, DirectorySetup, SegNRRDLoader
+from pyfroc.raters import BaseRater, NearestPairRater
+from pyfroc.writers import BaseWriter, RJAFROCWriter
 
 
 def prepare(dcm_dir_path: str, tgt_dir_path, num_of_raters: int, num_of_modalities: int) -> None:
@@ -14,9 +14,10 @@ def prepare(dcm_dir_path: str, tgt_dir_path, num_of_raters: int, num_of_modaliti
 
 
 def evaluate(tgt_dir: str,
-             loader_class: Type["BaseLoader"],
-             rater_class: Type["BaseRater"],
-             writer_class: Type["BaseWriter"], out_path: str) -> None:
+             out_path: str,
+             loader_class: Type["BaseLoader"] = SegNRRDLoader,
+             rater_class: Type["BaseRater"] = NearestPairRater,
+             writer_class: Type["BaseWriter"] = RJAFROCWriter) -> None:
     loader = loader_class(tgt_dir)
     rater = rater_class(loader)
     writer_class.write(out_path, rater)

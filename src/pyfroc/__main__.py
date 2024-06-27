@@ -58,7 +58,7 @@ def main():
         else:
             raise ValueError(f"Unknown writer class flag: {args.out_format}")
 
-        evaluate(args.out_path, loader_class, rater_class, writer_class, args.out_path)
+        evaluate(args.out_path, args.out_path, loader_class, rater_class, writer_class)
     else:
         parser.print_help()
 
