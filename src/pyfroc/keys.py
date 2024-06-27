@@ -20,21 +20,16 @@ class CaseKey:
     se_num: str
 
     @classmethod
-    def from_dcm(cls, dcm: pydicom.Dataset, modality_id: int | None = None) -> "CaseKey":
-        if modality_id is None:
-            modality = dcm.Modality
-        else:
-            modality = f"{dcm.Modality}{int(modality_id):d}"
-
+    def from_dcm(cls, dcm: pydicom.Dataset) -> "CaseKey":
         return CaseKey(patient_id=dcm.PatientID,
                        study_date=dcm.StudyDate,
-                       modality=modality,
+                       modality=dcm.Modality,
                        se_num=dcm.SeriesNumber)
 
     @classmethod
     def from_path(cls, dir_path: str) -> "CaseKey | None":
         # Search case directories
-        dirpath_pattern = r".*?([^\/]+)\/([0-9]{8})_([A-Z]{2}\d*)\/SE([0-9]+)"
+        dirpath_pattern = r".*?([^\/]+)\/([0-9]{8})_([A-Z]{2})\/SE([0-9]+)"
         m = re.match(dirpath_pattern, dir_path)
 
         if m is None:
@@ -45,18 +40,16 @@ class CaseKey:
                            modality=m.group(3),
                            se_num=m.group(4))
 
-    def to_ratercasekey(self, rater_name: str) -> "RaterCaseKey":
-        return RaterCaseKey(rater_name=rater_name, patient_id=self.patient_id,
-                            study_date=self.study_date, modality=self.modality, se_num=self.se_num)
+    def to_path(self) -> str:
+        return f"{self.patient_id}/{self.study_date}_{self.modality}/SE{self.se_num}"
 
-    def without_modalityid(self) -> "CaseKey":
-        pattern = r'\d+$'
-        modality = re.sub(pattern, '', self.modality)
-
-        return CaseKey(patient_id=self.patient_id,
-                       study_date=self.study_date,
-                       modality=modality,
-                       se_num=self.se_num)
+    def to_ratercasekey(self, rater_name: str, modality_id: int) -> "RaterCaseKey":
+        return RaterCaseKey(rater_name=rater_name,
+                            patient_id=self.patient_id,
+                            study_date=self.study_date,
+                            modality=self.modality,
+                            modality_id=modality_id,
+                            se_num=self.se_num)
 
 
 @dataclass(frozen=True)
@@ -65,12 +58,13 @@ class RaterCaseKey:
     patient_id: str
     study_date: str
     modality: str
+    modality_id: int
     se_num: str
 
     @classmethod
     def from_path(cls, dir_path: str) -> "RaterCaseKey | None":
         # Search case directories
-        dirpath_pattern = r".*?([^\/]+)\/([^\/]+)\/([0-9]{8}\d*)_([A-Z]{2})\/SE([0-9]+)"
+        dirpath_pattern = r".*?([^\/]+)\/([^\/]+)\/([0-9]{8})_([A-Z]{2})([0-9]+)\/SE([0-9]+)"
         m = re.match(dirpath_pattern, dir_path)
 
         if m is None:
@@ -80,10 +74,14 @@ class RaterCaseKey:
                                 patient_id=m.group(2),
                                 study_date=m.group(3),
                                 modality=m.group(4),
-                                se_num=m.group(5))
+                                modality_id=int(m.group(5)),
+                                se_num=m.group(6))
 
     def to_casekey(self) -> CaseKey:
         return CaseKey(patient_id=self.patient_id,
                        study_date=self.study_date,
                        modality=self.modality,
                        se_num=self.se_num)
+
+    def to_path(self) -> str:
+        return f"{self.rater_name}/{self.patient_id}/{self.study_date}_{self.modality}{self.modality_id}/SE{self.se_num}"
