@@ -1,27 +1,22 @@
 #!/usr/bin/env python
 # coding: UTF-8
 
-from pyfroc.loaders import BaseLoader, SegNRRDLoader
-from pyfroc.raters import NearestPairRater
-from pyfroc.writers import RJAFROCWriter
+from typing import Type
+
+from pyfroc.loaders import BaseLoader, DirectorySetup
+from pyfroc.raters import BaseRater
+from pyfroc.writers import BaseWriter
 
 
-def prepare(dcm_dir_path: str, tgt_dir_path, num_of_raters: int) -> None:
-    BaseLoader.prepare(dcm_dir_path, tgt_dir_path, num_of_raters)
+def prepare(dcm_dir_path: str, tgt_dir_path, num_of_raters: int, num_of_modalities: int) -> None:
+    direcotry_setup = DirectorySetup(tgt_dir_path)
+    direcotry_setup.prepare_dir(dcm_dir_path, num_of_raters, num_of_modalities)
 
 
-def evaluate(tgt_dir: str, loader_class_flag: str, rater_class_flag: str, out_path: str) -> None:
-    if loader_class_flag == "SegNRRDLoader":
-        loader_class = SegNRRDLoader
-    else:
-        raise ValueError(f"Unknown loader class flag: {loader_class_flag}")
-
-    if rater_class_flag == "WithinLesionRater":
-        rater_class = NearestPairRater
-    else:
-        raise ValueError(f"Unknown rater class flag: {rater_class_flag}")
-
-    evaluation_input = loader_class.read(tgt_dir)
-    evaluation_result = rater_class.evaluate(evaluation_input)
-
-    RJAFROCWriter.write(out_path, evaluation_result)
+def evaluate(tgt_dir: str,
+             loader_class: Type["BaseLoader"],
+             rater_class: Type["BaseRater"],
+             writer_class: Type["BaseWriter"], out_path: str) -> None:
+    loader = loader_class(tgt_dir)
+    rater = rater_class(loader)
+    writer_class.write(out_path, rater)
