@@ -46,7 +46,6 @@ class ObjIDbidict:
 class RJAFROC_IDs:
     case_id: int
     lesion_id: int
-    modality_id: int
 
 
 class RJAFROCWriter(BaseWriter):
@@ -66,9 +65,8 @@ class RJAFROCWriter(BaseWriter):
         truth_list = []
 
         # Prepare a conversion dictionary
-        modality2modalityid = ObjIDbidict(idx_start=0)
         raterid2readerid = ObjIDbidict(idx_start=0)
-        lesionid_modalityid_set = defaultdict(set)
+        modality_id_set = set()
 
         rjafroc_casekey_lesion_dict: T_rjafroc_casekey_lesion_dict = {}
 
@@ -77,16 +75,12 @@ class RJAFROCWriter(BaseWriter):
 
         # Read evaluation results
         for case_id, (casekey, lesions, rater_result_dict) in enumerate(rater):
-            modality_id = modality2modalityid.get_id_from(casekey.modality)
-
             # TRUTH sheet
             n_lesions = len(lesions)
             if n_lesions == 0:
                 lesion_id = 0
 
-                rjafroc_casekey_lesion_dict[(casekey, None)] = RJAFROC_IDs(case_id, lesion_id, modality_id)
-
-                lesionid_modalityid_set[(case_id, lesion_id)].add(modality_id)
+                rjafroc_casekey_lesion_dict[(casekey, None)] = RJAFROC_IDs(case_id, lesion_id)
 
                 truth_list.append({
                     "CaseID": case_id,
@@ -100,9 +94,7 @@ class RJAFROCWriter(BaseWriter):
                 lesion_weight = 1.0 / n_lesions
 
                 for lesion_id, lesion in zip(range(1, n_lesions+1), lesions):
-                    rjafroc_casekey_lesion_dict[(casekey, lesion)] = RJAFROC_IDs(case_id, lesion_id, modality_id)
-
-                    lesionid_modalityid_set[(case_id, lesion_id)].add(modality_id)
+                    rjafroc_casekey_lesion_dict[(casekey, lesion)] = RJAFROC_IDs(case_id, lesion_id)
 
                     truth_list.append({
                         "CaseID": case_id,
@@ -116,13 +108,14 @@ class RJAFROCWriter(BaseWriter):
             # TP and FP sheet
             for ratercasekey, (tp, fp) in rater_result_dict.items():
                 reader_id = raterid2readerid.get_id_from(ratercasekey.rater_name)
+                modality_id_set.add(ratercasekey.modality_id)
 
                 for response, lesion in tp:
                     lesion_id = rjafroc_casekey_lesion_dict[(casekey, lesion)].lesion_id
 
                     tp_list.append({
                         "ReaderID": reader_id,
-                        "ModalityID": modality_id,
+                        "ModalityID": ratercasekey.modality_id,
                         "CaseID": case_id,
                         "LesionID": lesion_id,
                         "TP_Rating": response.confidence,
@@ -131,7 +124,7 @@ class RJAFROCWriter(BaseWriter):
                 for response in fp:
                     fp_list.append({
                         "ReaderID": reader_id,
-                        "ModalityID": modality_id,
+                        "ModalityID": ratercasekey.modality_id,
                         "CaseID": case_id,
                         "FP_Rating": response.confidence,
                     })
@@ -154,11 +147,9 @@ class RJAFROCWriter(BaseWriter):
 
         # Set reader_ids and modality_ids in the TRUTH sheet
         readerids_str = ",".join(map(str, sorted(set(raterid2readerid.values()))))
+        modality_ids = ",".join(map(str, sorted(modality_id_set)))
         for row in truth_list:
             row["ReaderID"] = readerids_str
-
-            modalities = lesionid_modalityid_set[(row["CaseID"], row["LesionID"])]
-            modality_ids = ",".join(map(str, sorted(modalities)))
             row["ModalityID"] = modality_ids
 
         # Check empty
@@ -190,7 +181,7 @@ class RJAFROCWriter(BaseWriter):
             df_fp.to_excel(writer, sheet_name='FP', index=False)
             df_truth.to_excel(writer, sheet_name='TRUTH', index=False)
 
-            cls._write_supporting_information(writer, rjafroc_casekey_lesion_dict, raterid2readerid)
+            cls._write_supporting_information(writer, rjafroc_casekey_lesion_dict, raterid2readerid, modality_ids)
 
         progress_bar.update(1)
         progress_bar.close()
@@ -198,7 +189,8 @@ class RJAFROCWriter(BaseWriter):
     @classmethod
     def _write_supporting_information(cls, writer: pd.ExcelWriter,
                                       rjafroc_casekey_lesion_dict: T_rjafroc_casekey_lesion_dict,
-                                      ratername2readerid: ObjIDbidict) -> None:
+                                      ratername2readerid: ObjIDbidict,
+                                      modality_ids: str) -> None:
         # Write supporting information
         lesions_list = []
 
@@ -209,7 +201,7 @@ class RJAFROCWriter(BaseWriter):
                 x, y, z, r = (lesion.coords.x, lesion.coords.y, lesion.coords.z, lesion.r)
 
             lesions_list.append({
-                "ModalityID": rjafroc_id.modality_id,
+                "ModalityID": modality_ids,
                 "modality": casekey.modality,
                 "CaseID": rjafroc_id.case_id,
                 "patient_id": casekey.patient_id,
