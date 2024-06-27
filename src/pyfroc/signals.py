@@ -4,6 +4,8 @@
 from dataclasses import dataclass
 from typing import TypeVar
 
+import math
+
 from pyfroc.coords import Coordinates
 
 T_Signal = TypeVar("T_Signal", "Lesion", "Response")
@@ -21,23 +23,20 @@ class Lesion:
         assert isinstance(self.coords, Coordinates), f"coords should be Coordinates or subclasses, not {type(self.coords)}"
         assert self.r > 0.0, f"r should be greater than 0, not {self.r}"
 
+    def __eq__(self, other: T_Signal) -> bool:
+        return self.coords == other.coords and math.isclose(self.r, other.r) and self.name == other.name
+
     def distance(self, other: T_Signal) -> float:
         return self.coords.distance(other.coords)
 
 
 @dataclass(frozen=True)
-class Response:
-    coords: Coordinates
-    r: float
-    name: str
+class Response(Lesion):
     confidence: float | int
 
     def __post_init__(self):
         assert isinstance(self.coords, Coordinates), f"coords should be Coordinates or subclasses, not {type(self.coords)}"
         assert isinstance(self.confidence, (float, int)), f"confidence should be float, not {type(self.confidence)}"
-
-    def distance(self, other: T_Signal) -> float:
-        return self.coords.distance(other.coords)
 
     def is_true_positive(self, lesion: Lesion) -> bool:
         return self.distance(lesion) <= lesion.r
