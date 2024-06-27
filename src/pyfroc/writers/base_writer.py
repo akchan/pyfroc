@@ -4,11 +4,11 @@
 
 from abc import ABC, abstractmethod
 
-from pyfroc.keys import T_EvaluationResult
+from pyfroc.raters import BaseRater
 
 
 class BaseWriter(ABC):
     @classmethod
     @abstractmethod
-    def write(cls, path: str, evaluation_result: T_EvaluationResult) -> None:
+    def write(cls, path: str, rater: BaseRater) -> None:
         raise NotImplementedError()
