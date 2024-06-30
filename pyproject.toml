@@ -34,3 +34,17 @@ Issues = "https://github.com/akchan/pyfroc/issues"
 
 [tool.hatch.version]
 path = "src/pyfroc/__about__.py"
+
+[tool.hatch.envs.default]
+path = "hatch_env"
+
+[tool.hatch.envs.dev]
+dependencies = [
+  "pytest",
+  "jupyter",
+  "ipykernel",
+  "matplotlib",
+]
+post-install-commands = [
+  "python -m ipykernel install --user --name=pyfroc_dev",
+]
