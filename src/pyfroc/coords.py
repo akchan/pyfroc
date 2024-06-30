@@ -43,7 +43,7 @@ class Coordinates:
         try:
             spacing_direction_inv = np.linalg.inv(spacing_direction.T)
         except np.linalg.LinAlgError as e:
-            raise np.linalg.LinAlgError("The spacing direction matrix is singular.") from e
+            raise np.linalg.LinAlgError(f"The spacing direction matrix is singular. spacing_direction: {spacing_direction}") from e
 
         idx = np.round(np.dot(spacing_direction_inv, coords - origin)).astype(np.int32)
 
