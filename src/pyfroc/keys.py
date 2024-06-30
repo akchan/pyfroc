@@ -21,10 +21,10 @@ class CaseKey:
 
     @classmethod
     def from_dcm(cls, dcm: pydicom.Dataset) -> "CaseKey":
-        return CaseKey(patient_id=dcm.PatientID,
-                       study_date=dcm.StudyDate,
-                       modality=dcm.Modality,
-                       se_num=dcm.SeriesNumber)
+        return CaseKey(patient_id=str(dcm.PatientID),
+                       study_date=str(dcm.StudyDate),
+                       modality=str(dcm.Modality),
+                       se_num=str(dcm.SeriesNumber))
 
     @classmethod
     def from_path(cls, dir_path: str) -> "CaseKey | None":
@@ -39,6 +39,12 @@ class CaseKey:
                            study_date=m.group(2),
                            modality=m.group(3),
                            se_num=m.group(4))
+
+    def __post_init__(self):
+        assert isinstance(self.patient_id, str)
+        assert isinstance(self.study_date, str)
+        assert isinstance(self.modality, str)
+        assert isinstance(self.se_num, str)
 
     def to_path(self) -> str:
         return f"{self.patient_id}/{self.study_date}_{self.modality}/SE{self.se_num}"
