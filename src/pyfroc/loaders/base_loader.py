@@ -48,6 +48,16 @@ class BaseLoader(ABC):
 
     @abstractmethod
     def read_responses(self, case_dir_path: str) -> list[Response]:
+        """
+        Reads and returns a list of Response objects from the specified case directory path.
+        This abstract method should be implemented in the subclass.
+
+        Args:
+            case_dir_path (str): The path to the case directory.
+
+        Returns:
+            list[Response]: A list of Response objects.
+        """
         raise NotImplementedError("This method should be implemented in the subclass.")
 
     def read_lesions(self, case_dir_path: str) -> list[Lesion]:
