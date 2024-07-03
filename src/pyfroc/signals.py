@@ -35,7 +35,7 @@ class Response(Lesion):
     confidence: float | int
 
     def __post_init__(self):
-        assert isinstance(self.coords, Coordinates), f"coords should be Coordinates or subclasses, not {type(self.coords)}"
+        super().__post_init__()
         assert isinstance(self.confidence, (float, int)), f"confidence should be float, not {type(self.confidence)}"
 
     def is_true_positive(self, lesion: Lesion) -> bool:
