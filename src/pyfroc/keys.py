@@ -83,6 +83,13 @@ class RaterCaseKey:
                                 modality_id=int(m.group(5)),
                                 se_num=m.group(6))
 
+    def __post_init__(self):
+        assert isinstance(self.rater_name, str)
+        assert isinstance(self.patient_id, str)
+        assert isinstance(self.study_date, str)
+        assert isinstance(self.modality, str)
+        assert isinstance(self.se_num, str)
+
     def to_casekey(self) -> CaseKey:
         return CaseKey(patient_id=self.patient_id,
                        study_date=self.study_date,
