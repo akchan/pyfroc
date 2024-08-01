@@ -48,7 +48,7 @@ def main():
         else:
             raise ValueError(f"Unknown loader class flag: {args.filetype}")
 
-        if args.criteria == "WithinLesionRater":
+        if args.criteria == "within_lesion":
             rater_class = NearestPairRater
         else:
             raise ValueError(f"Unknown rater class flag: {args.criteria}")
@@ -58,7 +58,7 @@ def main():
         else:
             raise ValueError(f"Unknown writer class flag: {args.out_format}")
 
-        evaluate(args.out_path, args.out_path, loader_class, rater_class, writer_class)
+        evaluate(args.eval_dir, args.out_path, loader_class, rater_class, writer_class)
     else:
         parser.print_help()
 
