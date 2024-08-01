@@ -10,7 +10,6 @@ import re
 import nrrd
 import numpy as np
 from skimage.measure import label
-from skimage.morphology import binary_erosion
 
 from pyfroc.coords import ScannerCoordinates
 from pyfroc.loaders.base_loader import BaseLoader
