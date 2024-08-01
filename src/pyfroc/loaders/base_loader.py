@@ -3,6 +3,7 @@
 
 
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from itertools import product
 
 import glob
@@ -11,8 +12,8 @@ import sys
 
 import pydicom
 
-from pyfroc.keys import CaseKey, RaterCaseKey, T_EvaluationInput
-from pyfroc.signals import Response, Lesion, sort_signals
+from pyfroc.keys import CaseKey, RaterCaseKey, T_RatorInput
+from pyfroc.signals import BaseResponse, BaseLesion, sort_signals
 from pyfroc.utils import list_dcm_files
 
 
@@ -30,7 +31,7 @@ class BaseLoader(ABC):
     def __len__(self):
         return len(self.casekey_ratercasekey_dict)
 
-    def __getitem__(self, index: int) -> T_EvaluationInput:
+    def __getitem__(self, index: int) -> T_RatorInput:
         if index >= len(self):
             raise IndexError("Index out of range")
 
@@ -47,7 +48,7 @@ class BaseLoader(ABC):
         return casekey, lesions, rater_responses
 
     @abstractmethod
-    def read_responses(self, case_dir_path: str) -> list[Response]:
+    def read_responses(self, case_dir_path: str) -> Sequence[BaseResponse]:
         """
         Reads and returns a list of Response objects from the specified case directory path.
         This abstract method should be implemented in the subclass.
@@ -60,28 +61,29 @@ class BaseLoader(ABC):
         """
         raise NotImplementedError("This method should be implemented in the subclass.")
 
-    def read_lesions(self, case_dir_path: str) -> list[Lesion]:
+    def read_lesions(self, case_dir_path: str) -> Sequence[BaseLesion]:
         responses = self.read_responses(case_dir_path)
         return [resp.to_lesion() for resp in responses]
 
     def prepare_dir(self, dcm_root_dir_path: str,
                     number_of_raters: int = 3,
-                    number_of_modality_or_treatment=2,
-                    verbose=True) -> None:
+                    number_of_modality_or_treatment=2) -> None:
         """Prepare the directories to store the reference lesion and response files.
 
-        This method prepares the necessary directories to store the files for further processing.
+        This method prepares the required directories to store the files for further processing.
         It creates a reference directory and multiple rater directories based on the specified parameters.
 
         Args:
             dcm_root_dir_path (str): The root directory path containing the DICOM files.
             tgt_dir_path (str): The target directory path where the directories will be created.
             number_of_raters (int, optional): The number of rater directories to create. Defaults to 3.
-            verbose (bool, optional): If True, print the number of directories prepared. Defaults to True.
 
         Returns:
             None
         """
+        if self.verbose:
+            print("Preparing directories...")
+
         assert number_of_raters > 0, "number_of_raters should be greater than 0."
 
         dcm_path_list = list_dcm_files(dcm_root_dir_path, recursive=True)
@@ -101,7 +103,7 @@ class BaseLoader(ABC):
 
                 casekey_set.add(key)
 
-        # Set self.casekey_ratercasekey_dict
+        # Set self.casekey_ratercasekey_dict using casekey_set
         self.casekey_ratercasekey_dict.clear()
         for casekey in list(casekey_set):
             self.casekey_ratercasekey_dict[casekey] = []
@@ -114,26 +116,35 @@ class BaseLoader(ABC):
 
                 self.casekey_ratercasekey_dict[casekey].append(ratercasekey)
 
-        # Create a reference directory
-        self._create_dirs()
-
-        if verbose:
+        if self.verbose:
             n_cases = len(set(map(lambda c: c.patient_id, self.casekey_ratercasekey_dict.keys())))
             n_series = len(self.casekey_ratercasekey_dict.keys())
-            print("Prepared:")
-            print(f"  {n_cases} cases, {n_series} series")
-            print(f"  {number_of_raters} raters")
-            print(f"  {number_of_modality_or_treatment} modalities or treatments")
+
+            print("Detected dicom:")
+            print(f"  Number of dicom files: {len(dcm_path_list)}")
+            print(f"  Number of cases: {n_cases}")
+            print(f"  Number of series: {n_series}")
+
+        # Create a reference directory
+        self._create_dirs()
 
     def _create_dirs(self) -> None:
         # Create reference directories
         for casekey, ratercasekey_list in self.casekey_ratercasekey_dict.items():
             dir_path = os.path.join(self._reference_root_dir_path(), casekey.to_path())
+
+            if self.verbose:
+                print(f"Creating directory: {dir_path}")
+
             os.makedirs(dir_path, exist_ok=True)
 
             # Create response directories
             for ratercasekey in ratercasekey_list:
                 dir_path = os.path.join(self._response_root_dir_path(), ratercasekey.to_path())
+
+                if self.verbose:
+                    print(f"Creating directory: {dir_path}")
+
                 os.makedirs(dir_path, exist_ok=True)
 
     def _init_casekey_ratercasekey_dict(self) -> None:
@@ -147,6 +158,8 @@ class BaseLoader(ABC):
             ratercasekey = CaseKey.from_path(dir_path)
 
             if ratercasekey is None:
+                if self.verbose:
+                    print(f"Invalid directory: {dir_path}", file=sys.stderr)
                 continue
 
             self.casekey_ratercasekey_dict[ratercasekey] = []
@@ -159,6 +172,8 @@ class BaseLoader(ABC):
             ratercasekey = RaterCaseKey.from_path(dir_path)
 
             if ratercasekey is None:
+                if self.verbose:
+                    print(f"Invalid directory: {dir_path}", file=sys.stderr)
                 continue
 
             casekey = ratercasekey.to_casekey()
@@ -182,5 +197,5 @@ class BaseLoader(ABC):
 
 
 class DirectorySetup(BaseLoader):
-    def read_responses(self, case_dir_path: str) -> list[Response]:
+    def read_responses(self, case_dir_path: str) -> Sequence[BaseResponse]:
         return []

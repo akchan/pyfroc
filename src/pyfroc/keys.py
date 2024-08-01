@@ -1,15 +1,19 @@
 #!/usr/bin/env python
 # coding: UTF-8
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 import re
 
 import pydicom
 
-from pyfroc.signals import Response, Lesion, T_TruePositives, T_FalsePositives
+from pyfroc.signals import BaseResponse, BaseLesion
 
-T_EvaluationInput = tuple["CaseKey", list[Lesion], dict["RaterCaseKey", list[Response]]]
-T_EvaluationResult = tuple["CaseKey", list[Lesion], dict["RaterCaseKey", tuple[T_TruePositives, T_FalsePositives]]]
+# Type definitions
+T_TruePositives = list[tuple["BaseResponse", "BaseLesion"]]
+T_FalsePositives = list["BaseResponse"]
+T_RatorInput = tuple["CaseKey", Sequence[BaseLesion], dict["RaterCaseKey", Sequence[BaseResponse]]]
+T_WriterInput = tuple["CaseKey", Sequence[BaseLesion], dict["RaterCaseKey", tuple[T_TruePositives, T_FalsePositives]]]
 
 
 @dataclass(frozen=True)
