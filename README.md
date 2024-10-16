@@ -25,6 +25,8 @@ Python framework for FROC/AFROC analysis
 - [Use case](#use-case)
 - [Installation](#instalation)
 - [Tutorial](#tutorial)
+- [Author](#author)
+- [License](#license)
 
 ## Use case
 
@@ -57,14 +59,12 @@ pip install pyfroc
 
 Use pyfroc with 3D Slicer
 
+## Author
+
+Satoshi Funayama (@akchan)
+
+Department of Radiology, Hamamatsu University School of Medicine, Shizuoka, Japan
 
 ## License
 
 GPLv3
-
-
-
-
-
-
-
