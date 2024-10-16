@@ -4,14 +4,22 @@
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from dataclasses import dataclass
+import math
 from typing import TypeVar
 
-import math
 
-from pyfroc.coords import Coordinates
+import numpy as np
 
+
+from pyfroc.coords import Coordinates, ScannerCoordinates
+from pyfroc.miniball_util import get_min_sphere
+
+
+# Type definitions
 T_BaseSignal = TypeVar("T_BaseSignal", "BaseLesion", "BaseResponse")
 T_Signal = TypeVar("T_Signal", "Lesion", "Response")
+T_TruePositives = Sequence[tuple["BaseLesion", "BaseResponse"]]
+T_FalsePositives = Sequence["BaseResponse"]
 
 
 @dataclass(frozen=True)
@@ -64,6 +72,56 @@ class Lesion(BaseLesion):
 class Response(BaseResponse):
     r: float
     name: str
+
+    @classmethod
+    def from_mask(cls, name: str,
+                  confidence: float,
+                  mask: np.ndarray,
+                  space_directions: np.ndarray,
+                  origin: np.ndarray = np.zeros(3)) -> "Response":
+        """Response is approximated by a minimum sphere that encloses the mask.
+
+        Args:
+            name (str): Name of the response
+            confidence (float): Conficence for postive.
+            mask (np.ndarray): 3D mask of the response
+            space_directions (np.ndarray): a matrix of shape (3, 3) where each row is a direction vector.
+            origin (np.ndarray, optional): Coordinates of origin of the series. Defaults to np.zeros(3).
+
+        Returns:
+            Response: A new Response object.
+        """
+        c, r = Response.mask2minisphere(mask, space_directions, origin)
+        assert r > 0.0, f"Invalid radius {r = }"
+
+        return Response(coords=ScannerCoordinates(*c),
+                        r=r,
+                        name=name,
+                        confidence=confidence)
+
+    @staticmethod
+    def mask2minisphere(mask: np.ndarray,
+                        space_directions: np.ndarray,
+                        origin: np.ndarray = np.zeros(3),
+                        mask_dtype=np.int8) -> tuple[np.ndarray, float]:
+        mask = (mask > 0).astype(mask_dtype)
+
+        assert mask.max() > 0, "mask should have at least one positive cell"
+
+        # Convert idx to scanner coordinates
+        xx, yy, zz = np.where(mask > 0)
+        idx = np.array([xx, yy, zz], dtype=np.float32)
+
+        # (n_points, 3)
+        edge_coords = np.dot(space_directions.T, idx).T + origin
+
+        if len(edge_coords) == 1:
+            r = np.max(space_directions)
+            return edge_coords[0], r
+
+        c, r = get_min_sphere(edge_coords)
+
+        return c, r
 
     def __post_init__(self):
         assert self.r > 0.0, f"r should be greater than 0, not {self.r}"

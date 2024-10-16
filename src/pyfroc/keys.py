@@ -10,10 +10,10 @@ import pydicom
 from pyfroc.signals import BaseResponse, BaseLesion
 
 # Type definitions
-T_TruePositives = list[tuple["BaseResponse", "BaseLesion"]]
-T_FalsePositives = list["BaseResponse"]
-T_RatorInput = tuple["CaseKey", Sequence[BaseLesion], dict["RaterCaseKey", Sequence[BaseResponse]]]
-T_WriterInput = tuple["CaseKey", Sequence[BaseLesion], dict["RaterCaseKey", tuple[T_TruePositives, T_FalsePositives]]]
+T_RatorInput = tuple["RaterCaseKey", Sequence[BaseLesion], Sequence[BaseResponse]]
+T_TruePositives = Sequence[tuple[BaseLesion, BaseResponse]]
+T_FalsePositives = Sequence[BaseResponse]
+T_WriterInput = tuple["RaterCaseKey", Sequence[BaseLesion], T_TruePositives, T_FalsePositives]
 
 
 @dataclass(frozen=True)

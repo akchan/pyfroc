@@ -3,10 +3,11 @@
 
 
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 
 from pyfroc.loaders.base_loader import BaseLoader
-from pyfroc.signals import Response, Lesion, T_TruePositives, T_FalsePositives
-from pyfroc.keys import T_EvaluationResult
+from pyfroc.keys import T_RatorInput, T_WriterInput
+from pyfroc.signals import BaseResponse, BaseLesion, T_TruePositives, T_FalsePositives
 
 
 class BaseRater(ABC):
@@ -18,29 +19,30 @@ class BaseRater(ABC):
     def __len__(self):
         return len(self.loader)
 
-    def __getitem__(self, key: int) -> T_EvaluationResult:
-        if self.use_cache and key in self.cache:
-            return self.cache[key]
+    def __getitem__(self, index: int) -> T_WriterInput:
+        if self.use_cache and index in self.cache:
+            return self.cache[index]
 
-        evaluation_input = self.loader[key]
-        casekey, lesions, responses_dict = evaluation_input
+        evaluation_input: T_RatorInput = self.loader[index]
+        ratercasekey, lesions, responses = evaluation_input
+        tp, fp = self.evaluate_case_responses(lesions, responses)
 
-        evaluation_result: T_EvaluationResult = (casekey, lesions, {})
+        writer_input: T_WriterInput = (ratercasekey, lesions, tp, fp)
 
-        for ratercasekey, responses in responses_dict.items():
-            tp, fp = self.evaluate_case_responses(responses, lesions)
-            evaluation_result[2][ratercasekey] = (tp, fp)
+        if self.use_cache:
+            self.cache[index] = writer_input
 
-        self.cache[key] = evaluation_result
-
-        return evaluation_result
+        return writer_input
 
     def __iter__(self):
         for key in range(len(self)):
             yield self[key]
 
+    def clear_cache(self):
+        self.cache = {}
+
     @abstractmethod
-    def evaluate_case_responses(self, responses: list[Response], lesions: list[Lesion]) -> tuple[T_TruePositives, T_FalsePositives]:
+    def evaluate_case_responses(self, lesions: Sequence[BaseLesion], responses: Sequence[BaseResponse]) -> tuple[T_TruePositives, T_FalsePositives]:
         """Evaluate the responses of a specific case and devide them into true positive and false positive.
 
         Args:

@@ -8,6 +8,15 @@ import numpy as np
 import pydicom
 
 
+def count_directories(path):
+    try:
+        return len([entry for entry in os.listdir(path) if os.path.isdir(os.path.join(path, entry))])
+    except FileNotFoundError:
+        return "The specified path does not exist."
+    except PermissionError:
+        return "You do not have permission to access this path."
+
+
 def list_dcm_files(dir_path, recursive=True):
     if recursive:
         candidates = glob.glob(os.path.join(dir_path, "**"), recursive=True)

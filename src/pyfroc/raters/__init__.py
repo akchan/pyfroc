@@ -1,5 +1,5 @@
 
 from .base_rater import BaseRater
-from .nearest_pair_rater import NearestPairRater
+from .within_lesion_rater import WithinLesionRater
 
-__all__ = ['NearestPairRater', "BaseRater"]
+__all__ = ['WithinLesionRater', "BaseRater"]

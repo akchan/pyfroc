@@ -11,10 +11,8 @@ import nrrd
 import numpy as np
 from skimage.measure import label
 
-from pyfroc.coords import ScannerCoordinates
 from pyfroc.loaders.base_loader import BaseLoader
 from pyfroc.signals import Response
-from pyfroc.miniball_util import get_min_sphere
 
 
 @dataclass
@@ -66,43 +64,15 @@ class SegNRRDLoader(BaseLoader):
             for label_i in range(1, label_max + 1):
                 mask_i = (mask_labeled == label_i).astype(mask_dtype)
 
-                c, r = SegNRRDLoader.mask2minisphere(mask_i,
-                                                     segnrrd.space_directions,
-                                                     origin=segnrrd.origin)
-                assert r > 0.0, f"Invalid radius or {r} for {seg}"
-
-                res = Response(coords=ScannerCoordinates(*c),
-                               r=r,
-                               name=seg.name,
-                               confidence=seg.confidence)
+                res = Response.from_mask(name=seg.name,
+                                         confidence=seg.confidence,
+                                         mask=mask_i,
+                                         space_directions=segnrrd.space_directions,
+                                         origin=segnrrd.origin)
 
                 responses.append(res)
 
         return responses
-
-    @staticmethod
-    def mask2minisphere(mask: np.ndarray,
-                        space_directions: np.ndarray,
-                        origin: np.ndarray = np.zeros(3),
-                        mask_dtype=np.int8) -> tuple[np.ndarray, float]:
-        mask = (mask > 0).astype(mask_dtype)
-
-        assert mask.max() > 0, "mask should have at least one positive cell"
-
-        # Convert idx to scanner coordinates
-        xx, yy, zz = np.where(mask > 0)
-        idx = np.array([xx, yy, zz], dtype=np.float32)
-
-        # (n_points, 3)
-        edge_coords = np.dot(space_directions.T, idx).T + origin
-
-        if len(edge_coords) == 1:
-            r = np.max(space_directions)
-            return edge_coords[0], r
-
-        c, r = get_min_sphere(edge_coords)
-
-        return c, r
 
     @staticmethod
     def list_segnrrd_path(dir_path) -> list[str]:
