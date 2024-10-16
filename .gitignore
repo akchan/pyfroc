@@ -162,3 +162,4 @@ cython_debug/
 dev*/
 *.dcm
 sample_data/*
+hatch_env/
