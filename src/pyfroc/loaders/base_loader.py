@@ -184,6 +184,7 @@ class BaseLoader(ABC):
         ref_dir_list = []
         casekey_list = []
 
+        # Check every directory has valid path for CaseKey
         for dir_path in glob.glob(os.path.join(self.reference_root_dir_path(), "**"), recursive=True):
             if not (os.path.isdir(dir_path) and count_directories(dir_path) == 0):
                 continue
@@ -202,6 +203,7 @@ class BaseLoader(ABC):
         res_dir_list = []
         ratercasekey_list = []
 
+        # Check every directory has valid path for RaterCaseKey
         for dir_path in glob.glob(os.path.join(self.response_root_dir_path(), "**"), recursive=True):
             if not (os.path.isdir(dir_path) and count_directories(dir_path) == 0):
                 continue

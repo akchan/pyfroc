@@ -3,9 +3,10 @@
 
 import argparse
 import os
+import sys
 
 from pyfroc.loaders import DirectorySetup, SegNRRDLoader
-from pyfroc.raters import WithinLesionRater
+from pyfroc.raters import BaseRater, WithinLesionRater
 from pyfroc.writers import RJAFROCWriter, ResponseLesionImagesWriter
 
 
@@ -15,41 +16,43 @@ def prepare(dcm_dir_path: str, tgt_dir_path, num_of_raters: int, num_of_modaliti
 
 
 def evaluate(args, def_param: dict) -> None:
-    # Check the arguments and set the appropriate variables
-    if args.out_path is None:
-        args.out_path = args.eval_dir
-
+    # Prepare the loader
     if args.filetype == "segnrrd":
         loader_class = SegNRRDLoader
     else:
         raise ValueError(f"Unknown loader class flag: {args.filetype}")
 
+    loader = loader_class(args.eval_dir)
+    loader.validate_dirs()
+
+    # Prepare the rater
     if args.criteria == "within_lesion":
         rater_class = WithinLesionRater
     else:
         raise ValueError(f"Unknown rater class flag: {args.criteria}")
 
+    rater = rater_class(loader)
+
+    # Evaluate the responses and write the results
     if args.out_format == "rjafroc_xlsx":
-        writer_class = RJAFROCWriter
+        # Evaluate the responses
+        rjafrox_xlsx_path = os.path.join(args.out_path, def_param['out_filename'])
+
+        RJAFROCWriter.write(xlsx_path=rjafrox_xlsx_path, rater=rater)
+    elif args.out_format == "signal_img":
+        write_response_lesion_images(args, def_param, rater)
     else:
         raise ValueError(f"Unknown writer class flag: {args.out_format}")
 
     if args.write_img:
-        assert args.dicom_dir is not None, "The --dicom-dir option is required when --write-img is True."
+        write_response_lesion_images(args, def_param, rater)
 
-    # Evaluate the responses
-    loader = loader_class(args.eval_dir)
-    loader.validate_dirs()
-    rater = rater_class(loader)
-    rjafrox_xlsx_path = os.path.join(args.out_path, def_param['out_filename'])
-    writer_class.write(xlsx_path=rjafrox_xlsx_path, rater=rater)
 
-    # Write images if the flag is True
-    if args.write_img:
-        write_img_out_dir_path = os.path.join(args.out_path, def_param['out_write_img_dirname'])
-        ResponseLesionImagesWriter.write(rater=rater,
-                                         dcm_root_dir_path=args.dicom_dir,
-                                         out_path=write_img_out_dir_path)
+def write_response_lesion_images(args, def_param: dict, rater: BaseRater) -> None:
+    write_img_out_dir_path = os.path.join(args.out_path, def_param['out_write_img_dirname'])
+    ResponseLesionImagesWriter.write(rater=rater,
+                                     dcm_root_dir_path=args.dicom_dir,
+                                     out_path=write_img_out_dir_path)
 
 
 def main():
@@ -106,15 +109,15 @@ def main():
                              default="within_lesion",
                              help='Criteria for positive responses.')
     parser_eval.add_argument('--out-format',
-                             choices=["rjafroc_xlsx"],
+                             choices=["rjafroc_xlsx", "signal_img"],
                              default="rjafroc_xlsx",
                              help='Output file format')
     parser_eval.add_argument('--write-img',
-                             action="store_true",
-                             help='Write the matched lesion and response images. Default is False.')
+                             action='store_true',
+                             help='Same as --out-format signal_img. This option can be used with the other type of output file format and save the processing time.')
     parser_eval.add_argument('--dicom-dir',
                              type=str,
-                             help='Path to the root directory of DICOM files used in this experiment. This option is required if --write-img flag is used.')
+                             help='Path to the root directory of DICOM files used in this experiment. This option is required if --out-format signal_img or --write-img flag is used.')
 
     args = parser.parse_args()
 
@@ -125,7 +128,23 @@ def main():
                 args.target_dir,
                 args.num_of_raters,
                 args.num_of_modalities)
+
     elif args.subcommand == 'evaluate':
+        # Custom validation for the 'evaluate' subcommand
+
+        # Check the arguments and set the appropriate variables
+        if args.out_path is None:
+            args.out_path = args.eval_dir
+
+        # Check the dicom_dir option when the out_format is signal_img
+        if args.out_format == "signal_img":
+            if args.dicom_dir is None:
+                print("The --dicom-dir option is required when --out-format is signal_img.", file=sys.stderr)
+                sys.exit(1)
+
+            if args.write_img:
+                args.write_img = False
+
         evaluate(args, def_param)
     else:
         parser.print_help()

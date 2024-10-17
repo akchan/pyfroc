@@ -27,4 +27,4 @@
 
 
 # The version number should be updated in the tag of git system.
-__version__ = "0.1.1"
+__version__ = "0.2.0"
