@@ -93,7 +93,7 @@ class RJAFROCWriter(BaseWriter):
                 print(f"{tp = }")
                 print(f"{fp = }")
                 print("")
-            
+
             # TRUTH sheet
             n_lesions = len(lesions)
             if n_lesions == 0:
