@@ -143,6 +143,9 @@ class ResponseLesionImagesWriter(BaseWriter):
             i_counter = 1
             casekey = ratercasekey.to_casekey()
 
+            lesion_set = set(lesions)
+
+            # Write true positive case
             for lesion, response in tp:
                 if casekey not in db.keys():
                     print(f"[Error] Dicom not found: {casekey}", file=sys.stderr)
@@ -159,12 +162,29 @@ class ResponseLesionImagesWriter(BaseWriter):
                 os.makedirs(os.path.dirname(img_path), exist_ok=True)
                 img.save(img_path)
 
+                # Remove the lesion from the set
+                lesion_set.remove(lesion)
+
+            # Write false positive case
             for response in fp:
                 dcm_series_info = db[casekey]
 
                 img = cls.create_response_lesion_image(ratercasekey, dcm_series_info, None, response)
 
                 img_path = cls.build_img_path(out_root_dir_path, ratercasekey, i_counter, "false_positive")
+                i_counter += 1
+
+                print(f" writing {img_path}")
+                os.makedirs(os.path.dirname(img_path), exist_ok=True)
+                img.save(img_path)
+
+            # Write lesions without a response
+            for lesion in lesion_set:
+                dcm_series_info = db[casekey]
+
+                img = cls.create_response_lesion_image(ratercasekey, dcm_series_info, lesion, None)
+
+                img_path = cls.build_img_path(out_root_dir_path, ratercasekey, i_counter, "false_negative-no_response")
                 i_counter += 1
 
                 print(f" writing {img_path}")
@@ -339,7 +359,7 @@ class ResponseLesionImagesWriter(BaseWriter):
     def create_response_lesion_image(cls, ratercasekey: RaterCaseKey,
                                      dcm_series_info: DcmSeriesInfo,
                                      lesion: BaseLesion | None,
-                                     response: BaseResponse,
+                                     response: BaseResponse | None,
                                      text_size=20,
                                      text_position=(5, 5),
                                      img_size=(512, 512),
@@ -353,23 +373,30 @@ class ResponseLesionImagesWriter(BaseWriter):
 
         # Read DICOM image and apply signal to it
         # Response
-        img_res = cls.read_dcm_image(response, dcm_series_info, img_size)
-        img_res = cls.apply_signal_text_to_image(img_res, response, position=text_position, text_size=text_size, color=response_color)
+        if response is None:
+            img_res = ImageObj(Image.new("RGB", img_size), -1, -1)
+            img_res = cls.apply_text_to_image(img_res, "No response", text_size, text_position, color=response_color)
+        else:
+            img_res = cls.read_dcm_image(response, dcm_series_info, img_size)
+            img_res = cls.apply_signal_text_to_image(img_res, response, position=text_position, text_size=text_size, color=response_color)
 
         # Lesion
         if lesion is None:
             img_lesion = ImageObj(Image.new("RGB", img_size), -1, -1)
             img_lesion = cls.apply_text_to_image(img_lesion, "No lesion", text_size, text_position, color=lesion_color)
         else:
-            img_res = cls.apply_signal_to_image(img_res, lesion, dcm_series_info, signal_color=lesion_color)
-
             img_lesion = cls.read_dcm_image(lesion, dcm_series_info, img_size)
             img_lesion = cls.apply_signal_to_image(img_lesion, lesion, dcm_series_info, signal_color=lesion_color)
             img_lesion = cls.apply_signal_text_to_image(img_lesion, lesion, position=text_position, text_size=text_size, color=lesion_color)
 
-        img_res = cls.apply_signal_to_image(img_res, response, dcm_series_info, signal_color=response_color)
+        # Apply signal to the response image
+        if response is not None:
+            if lesion is not None:
+                img_res = cls.apply_signal_to_image(img_res, lesion, dcm_series_info, signal_color=lesion_color)
 
-        # Concatenate the two iamges horizontally
+            img_res = cls.apply_signal_to_image(img_res, response, dcm_series_info, signal_color=response_color)
+
+        # Concatenate the 3 images
         img = Image.fromarray(np.hstack([np.array(img_res.img), np.array(img_lesion.img)]))
         img = Image.fromarray(np.vstack([np.array(img_header.img), np.array(img)]))
 
