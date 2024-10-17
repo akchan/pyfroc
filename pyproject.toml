@@ -19,7 +19,6 @@ dependencies = [
   "pydicom>=2.4.4",
   "pynrrd>=1.0.0",
   "pytypedstream>=0.1.0",
-  "requests",
   "scikit-image>=0.23.2",
   "tcia_utils",
   "tqdm>=4.66.4",
@@ -37,19 +36,12 @@ pyfroc = "pyfroc:main"
 Homepage = "https://github.com/akchan/pyfroc"
 Issues = "https://github.com/akchan/pyfroc/issues"
 
-[tool.hatch.version]
-path = "src/pyfroc/__about__.py"
-
 [tool.hatch.envs.default]
 path = "hatch_env"
 
 [tool.hatch.envs.dev]
-dependencies = [
-  "pytest",
-  "jupyter",
-  "ipykernel",
-  "matplotlib",
-]
-post-install-commands = [
-  "ipython kernel install --user --name=pyfroc_dev",
-]
+dependencies = ["pytest", "jupyter", "ipython", "ipykernel", "matplotlib"]
+post-install-commands = ["ipython kernel install --user --name=pyfroc_dev"]
+
+[tool.hatch.version]
+path = "src/pyfroc/__about__.py"

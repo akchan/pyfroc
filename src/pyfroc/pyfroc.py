@@ -7,6 +7,7 @@ import sys
 
 from pyfroc.loaders import DirectorySetup, SegNRRDLoader
 from pyfroc.raters import BaseRater, WithinLesionRater
+from pyfroc.sample import download_dicom_from_nbia, load_sample_experiment_data
 from pyfroc.writers import RJAFROCWriter, ResponseLesionImagesWriter
 
 
@@ -60,7 +61,8 @@ def main():
     def_param = {
         'target_dir': "./experiment",
         "out_filename": "rjafroc_input.xlsx",
-        "out_write_img_dirname": "lesion_response_images"
+        "out_write_img_dirname": "lesion_response_images",
+        "sample_target_dir": "./sample_data",
     }
 
     # Parsers for the main command and subcommands
@@ -119,6 +121,19 @@ def main():
                              type=str,
                              help='Path to the root directory of DICOM files used in this experiment. This option is required if --out-format signal_img or --write-img flag is used.')
 
+    # 'sample' subcommand parser
+    parser_sample = subparsers.add_parser('sample', help='Load sample data for the demonstration.')
+    parser_sample.add_argument('--dicom',
+                               action='store_true',
+                               help='Load DICOM files for the sample experiment data. These  are 3 cases of the LIDC-IDRI and will be downloaded from the NBIA.')
+    parser_sample.add_argument('--experiment',
+                               action='store_true',
+                               help='Load the experiment data. This includes 3 cases, 2 raters, and 2 modalities (CT0 and CT1). The corresponding images can be found using --dicom option.')
+    parser_sample.add_argument('--target-dir',
+                               type=str,
+                               default=def_param['sample_target_dir'],
+                               help=f'Path to the target directory where the prepared files will be stored. The responses of the raters and the reference files should be stored in this directory. The default is {def_param["target_dir"]}.')
+
     args = parser.parse_args()
 
     # Call the appropriate function based on the subcommand
@@ -146,5 +161,11 @@ def main():
                 args.write_img = False
 
         evaluate(args, def_param)
+    elif args.subcommand == 'sample':
+        if args.dicom:
+            download_dicom_from_nbia(args.target_dir)
+
+        if args.experiment:
+            load_sample_experiment_data(args.target_dir)
     else:
         parser.print_help()
