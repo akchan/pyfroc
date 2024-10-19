@@ -35,7 +35,7 @@ Python framework for FROC/AFROC analysis
   - [Tutorials](#tutorials)
     - [1. Demonstration](#1-demonstration)
     - [2. Perform an AFROC experiment](#2-perform-an-afroc-experiment)
-    - [3. Write a custom loader for your data](#3-write-a-custom-loader-for-your-data)
+    - [3. How to modify behavior in pyfroc](#3-how-to-modify-behavior-in-pyfroc)
   - [Author](#author)
   - [License](#license)
 
@@ -82,9 +82,9 @@ In this tutorial, you will perform an AFROC analysis using the pyfroc framework 
 
 See [./samples/tutorial2.ipynb](./samples/tutorial2.ipynb)
 
-### 3. Write a custom loader for your data
+### 3. How to modify behavior in pyfroc
 
-You can import other than .nrrd files if you write a custom loader class.
+If you want to modify behavior in pyfroc other than CLI options, you can write your own class inheriting base class to make new behavior.
 
 See [./samples/tutorial3.ipynb](./samples/tutorial3.ipynb)
 
