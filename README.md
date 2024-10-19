@@ -22,27 +22,40 @@ Python framework for FROC/AFROC analysis
 
 ## Table of contents
 
-- [Use case](#use-case)
-- [Installation](#instalation)
-- [Tutorial](#tutorial)
-- [Author](#author)
-- [License](#license)
+- [pyfroc](#pyfroc)
+  - [About](#about)
+    - [What pyfroc does](#what-pyfroc-does)
+    - [What pyfroc doesn't](#what-pyfroc-doesnt)
+  - [Table of contents](#table-of-contents)
+  - [Use case](#use-case)
+    - [Scenario #1](#scenario-1)
+    - [Scenario #2](#scenario-2)
+    - [Scenario #3](#scenario-3)
+  - [Instalation](#instalation)
+  - [Tutorials](#tutorials)
+    - [1. Demonstration](#1-demonstration)
+    - [2. Perform an AFROC experiment](#2-perform-an-afroc-experiment)
+    - [3. Write a custom loader for your data](#3-write-a-custom-loader-for-your-data)
+  - [Author](#author)
+  - [License](#license)
 
 ## Use case
 
 pyfroc is designed for specific scenarios of FROC/AFROC analysis. pyfroc itself supports only one modality for reference lesions. If you want to compare two modality using two reference modality, run pyfroc for each reference modality, write .xlsx files for RJafroc, and combine the two .xlsx file manually.
 
-### Example scenario #1
+Here are the sample scenarios.
+
+### Scenario #1
 
 - Compare detection performance between radiologists with and without AI
-- The responses will be recored on the same series of DICOM image for radiologists with and without AI.
+- The responses will be recored on the same series of DICOM images for radiologists with and without AI.
 
-### Example scenario #2
+### Scenario #2
 
-- Compare a standard MRI protocol with an abbreviated protocol.
-- The responses will be recored on the same series of DICOM image for both protocols.
+- Compare a standard MRI protocol with an abbreviated protocol in terms of lesion detection.
+- The responses will be recored on the same series of DICOM images for both protocols.
 
-### Example scenario #3
+### Scenario #3
 
 - Compare images reconstructed using an advanced method with images reconstructed using conventional method in terms of the lesion detectability.
 - Using either series to record responses.
@@ -55,9 +68,25 @@ Run the command below in your terminal.
 pip install pyfroc
 ```
 
-## Tutorial
+## Tutorials
 
-Use pyfroc with 3D Slicer
+### 1. Demonstration
+
+This tutorial demostrates a walkthrough of AFROC analysis using the pyfroc framework.
+
+See [./samples/tutorial1.ipynb](./samples/tutorial1.ipynb)
+
+### 2. Perform an AFROC experiment
+
+In this tutorial, you will perform an AFROC analysis using the pyfroc framework with your DICOM images.
+
+See [./samples/tutorial2.ipynb](./samples/tutorial2.ipynb)
+
+### 3. Write a custom loader for your data
+
+You can import other than .nrrd files if you write a custom loader class.
+
+See [./samples/tutorial3.ipynb](./samples/tutorial3.ipynb)
 
 ## Author
 
