@@ -132,7 +132,7 @@ def main():
     parser_sample.add_argument('--target-dir',
                                type=str,
                                default=def_param['sample_target_dir'],
-                               help=f'Path to the target directory where the prepared files will be stored. The responses of the raters and the reference files should be stored in this directory. The default is {def_param["target_dir"]}.')
+                               help=f'Path to the target directory where the prepared files will be stored. The responses of the raters and the reference files should be stored in this directory. The default is {def_param["sample_target_dir"]}.')
 
     args = parser.parse_args()
 
