@@ -33,7 +33,7 @@ class BaseLoader(ABC):
         return len(self.ratercasekey_list)
 
     def __getitem__(self, index: int) -> T_RatorInput:
-        if index >= len(self):
+        if index < 0 or index >= len(self):
             raise IndexError("Index out of range")
 
         ratercasekey = self.ratercasekey_list[index]
