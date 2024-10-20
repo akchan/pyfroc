@@ -92,87 +92,47 @@ RScript samples/afroc_analysis.R
 ## Sample code (Python)
 
 ```python
-from dataclasses import dataclass
 
-from pyfroc.coords import ScannerCoordinates
-from pyfroc.loaders import BaseLoader
-from pyfroc.keys import RaterCaseKey, T_RatorInput
-from pyfroc.signals import Lesion, Response
+from pyfroc.loaders.simple_loader import (
+    SimpleLoader,
+    SignalRaw,
+    ReferenceRaw,
+    ResponseRaw
+)
+from pyfroc.raters import WithinLesionRater
+from pyfroc.writers import RJAFROCWriter
 
+# Prepare your data
+case_list = []
 
-@dataclass
-class SignalRaw:
-    name: str
-    x: float
-    y: float
-    z: float
-    r: float
-    confidence: float
+case_list.append((
+    ReferenceRaw(
+        case_id="case1",
+        modality_id="modality1",
+        signals=[
+            SignalRaw(name="signal1", x=1, y=2, z=3, r=4, confidence=0.5),
+            SignalRaw(name="signal2", x=5, y=6, z=7, r=8, confidence=0.6),
+        ]
+    ),
+    ResponseRaw(
+        rater_id="rater1",
+        case_id="case1",
+        modality_id="modality1",
+        signals=[
+            SignalRaw(name="signal1", x=1, y=2, z=3, r=4, confidence=0.5),
+            SignalRaw(name="signal2", x=5, y=6, z=7, r=8, confidence=0.6),
+        ]
+    )
+))
 
+# Create a loader
+loader = SimpleLoader(case_list)
 
-@dataclass
-class ReferenceRaw:
-    case_id: str
-    modality_id: str
-    signals: list[SignalRaw]
+# Create a rater
+rater = WithinLesionRater(loader)
 
-
-@dataclass
-class ResponseRaw:
-    rater_id: str
-    case_id: str
-    modality_id: str
-    signals: list[SignalRaw]
-
-
-T_case_list = list[tuple[ReferenceRaw, ResponseRaw]]
-
-
-class SampleLoader:
-    def __init__(self):
-        self.case_list: T_case_list = []
-
-    def __len__(self):
-        return len(self.case_list)
-
-    def __getitem__(self, index: int) -> T_RatorInput:
-        if index < 0 or index >= len(self):
-            raise IndexError("Index out of range")
-
-        reference_raw, response_raw = self.case_list[index]
-
-        # Convert the signal objects to the pyfroc objects
-        responses = self.read_signals(reference_raw)
-        lesions = self.read_signals(response_raw)
-        ratercasekey = self.build_ratercasekey(response_raw)
-
-        return ratercasekey, lesions, responses
-
-    def read_signals(self, raw_data: ReferenceRaw | ResponseRaw):
-        ret = []
-
-        for i, signal in enumerate(raw_data.signals):
-            signal_name = f"C{raw_data.case_id}"
-            if isinstance(raw_data, ResponseRaw):
-                signal_name += f"_R{raw_data.rater_id}"
-            signal_name += f"_{i:03d}"
-
-            coords = ScannerCoordinates(signal.x, signal.y, signal.z)
-            response = Response(coords, signal.confidence, signal.r, signal_name)
-
-            ret.append(response)
-
-        return ret
-
-    def build_ratercasekey(self, response_raw: ResponseRaw):
-        rater_name = response_raw.rater_id
-        patient_id = response_raw.case_id
-        study_date = ""
-        modality = response_raw.modality_id
-        modality_id = int(response_raw.modality_id)
-        se_num = ""
-
-        return RaterCaseKey(rater_name, patient_id, study_date, modality, modality_id, se_num)
+# Write the result to a file
+RJAFROCWriter.write("rjarcox_input.xlsx", rater)
 
 ```
 
