@@ -13,6 +13,8 @@ Python framework for FROC/AFROC analysis
       - [Scenario #1](#scenario-1)
       - [Scenario #2](#scenario-2)
       - [Scenario #3](#scenario-3)
+  - [Requirements](#requirements)
+  - [Compatibility](#compatibility)
   - [Instalation](#instalation)
   - [Sample code (CLI)](#sample-code-cli)
   - [Sample code (Python)](#sample-code-python)
@@ -61,6 +63,18 @@ Here are the sample scenarios.
 
 - Compare images reconstructed using an advanced method with images reconstructed using conventional method in terms of the lesion detectability.
 - Using either series to record responses.
+
+## Requirements
+
+- python >= 3.9
+
+## Compatibility
+
+- Input
+  - `.seg.nrrd`: e.g. 3D Slicer
+  - ndarray (your python code)
+- Output
+  - `rjafroc.xlsx`: an excel file for RJafroc R Library (for FROC/AFROC analysis)
 
 ## Instalation
 
